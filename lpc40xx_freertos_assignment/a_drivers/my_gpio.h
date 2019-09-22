@@ -1,3 +1,6 @@
+#ifndef my_gpio
+#define my_gpio
+
 #include <stdbool.h>
 #include <stdint.h>
 #include "delay.h"
@@ -6,12 +9,12 @@
 #define IN 1
 #define OUT 0
 
-struct IO_PORT_PIN{
+typedef struct IO_PORT_PIN{
   LPC_GPIO_TypeDef *port;
   int pin_num;
   int state;
   int status;
-};
+}IO_PORT_PIN;
 
 
 
@@ -34,3 +37,5 @@ void gpio0_set_low(uint8_t pin_num);
 void gpio0_set(uint8_t pin_num, bool high);
 bool gpio0_get_level(uint8_t pin_num);
 void gpio0_toggle(uint8_t pin_num);
+
+#endif
