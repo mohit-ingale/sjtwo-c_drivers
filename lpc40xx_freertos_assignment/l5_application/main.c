@@ -10,11 +10,14 @@
 #include "uart.h"
 #include "uart_printf.h"
 
+#include "a_interrupt.h"
+
 static void a_blink_task(void *params);
 static void a_read_switch(void *params);
 
 static void uart_task(void *params);
 static void uart0_init(void);
+
 
 static struct IO_PORT_PIN outpin1, outpin2;
 static struct IO_PORT_PIN inpin1, inpin2;
@@ -26,9 +29,12 @@ int main(void) {
   my_gpio_init(0,29,IN,&inpin1);
   uart0_init();
   
-  xTaskCreate(a_blink_task, "led1", (512U / sizeof(void *)), (void *)&outpin1, PRIORITY_LOW, NULL);
-  xTaskCreate(a_read_switch, "sw1", (512U / sizeof(void *)), (void *)&inpin1, PRIORITY_LOW, NULL);
-
+  LPC_GPIOINT->IO0IntEnR |= (1<<29);
+  NVIC_EnableIRQ(GPIO_IRQn);
+  
+  //xTaskCreate(a_blink_task, "led1", (512U / sizeof(void *)), (void *)&outpin1, PRIORITY_LOW, NULL);
+  //xTaskCreate(a_read_switch, "sw1", (512U / sizeof(void *)), (void *)&inpin1, PRIORITY_LOW, NULL);
+while(1);
   // printf() takes more stack space
   xTaskCreate(uart_task, "uart", (512U * 4) / sizeof(void *), NULL, PRIORITY_LOW, NULL);
 
@@ -42,6 +48,11 @@ int main(void) {
    */
 
   return 0;
+}
+
+extern void a_gpio_isr(void){
+    my_gpio_toggle(&outpin1);
+    LPC_GPIOINT->IO0IntClr |= (1<<29);
 }
 
 static void a_read_switch(void *params){
