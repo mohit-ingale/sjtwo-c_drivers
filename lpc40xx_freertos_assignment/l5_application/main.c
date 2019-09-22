@@ -11,6 +11,7 @@
 #include "uart_printf.h"
 
 #include "a_interrupt.h"
+#include "lpc_peripherals.h"
 
 static void a_blink_task(void *params);
 static void a_read_switch(void *params);
@@ -22,13 +23,14 @@ static void uart0_init(void);
 static struct IO_PORT_PIN outpin1, outpin2;
 static struct IO_PORT_PIN inpin1, inpin2;
 static uint8_t switch_status = 0;
-
+lpc_peripheral_e gpio_interrupt = LPC_PERIPHERAL__GPIO;
+function__void_f gpio_isr_callback = a_gpio_isr;
 int main(void) {
   my_gpio_init(1,26,OUT,&outpin1);   //Initialize Port 1 Pin 26 as output
   //my_gpio_init(2,3,OUT,&outpin2);   //Initialize Port 2 Pin 7 as output
   my_gpio_init(0,29,IN,&inpin1);
   uart0_init();
-  
+  lpc_peripheral__enable_interrupt(gpio_interrupt,gpio_isr_callback);
   LPC_GPIOINT->IO0IntEnR |= (1<<29);
   NVIC_EnableIRQ(GPIO_IRQn);
   

@@ -3,7 +3,6 @@
 
 #include "freertos_interrupt_handlers.h"
 #include "function_types.h"
-#include "a_interrupt.h"
 
 /**
  * _estack symbol is actually a pointer to the start of the stack memory (provided by the linker script).
@@ -84,7 +83,7 @@ __attribute__((section(".interrupt_vector_table"))) const function__void_f inter
     lpc_peripheral__interrupt_dispatcher, // 51 UART 4
     lpc_peripheral__interrupt_dispatcher, // 52 SSP 2
     lpc_peripheral__interrupt_dispatcher, // 53 LCD
-    a_gpio_isr, // 54 GPIO Interrupt
+    lpc_peripheral__interrupt_dispatcher, // 54 GPIO Interrupt
     lpc_peripheral__interrupt_dispatcher, // 55 PWM 0
     lpc_peripheral__interrupt_dispatcher, // 56 EEPROM
 };
