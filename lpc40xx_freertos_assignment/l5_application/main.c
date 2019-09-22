@@ -11,20 +11,23 @@
 #include "uart_printf.h"
 
 static void a_blink_task(void *params);
-static void uart_task(void *params);
+static void a_read_switch(void *params);
 
-static void blink_on_startup(gpio_s gpio, int count);
+static void uart_task(void *params);
 static void uart0_init(void);
 
 static struct IO_PORT_PIN outpin1, outpin2;
+static struct IO_PORT_PIN inpin1, inpin2;
+static uint8_t switch_status = 0;
 
 int main(void) {
   my_gpio_init(1,26,OUT,&outpin1);   //Initialize Port 1 Pin 26 as output
-  my_gpio_init(2,3,OUT,&outpin2);   //Initialize Port 2 Pin 7 as output
+  //my_gpio_init(2,3,OUT,&outpin2);   //Initialize Port 2 Pin 7 as output
+  my_gpio_init(0,29,IN,&inpin1);
   uart0_init();
   
-  xTaskCreate(a_blink_task, "led0", (512U / sizeof(void *)), (void *)&outpin1, PRIORITY_LOW, NULL);
-  xTaskCreate(a_blink_task, "led1", (512U / sizeof(void *)), (void *)&outpin2, PRIORITY_LOW, NULL);
+  xTaskCreate(a_blink_task, "led1", (512U / sizeof(void *)), (void *)&outpin1, PRIORITY_LOW, NULL);
+  xTaskCreate(a_read_switch, "sw1", (512U / sizeof(void *)), (void *)&inpin1, PRIORITY_LOW, NULL);
 
   // printf() takes more stack space
   xTaskCreate(uart_task, "uart", (512U * 4) / sizeof(void *), NULL, PRIORITY_LOW, NULL);
@@ -41,11 +44,25 @@ int main(void) {
   return 0;
 }
 
+static void a_read_switch(void *params){
+  struct IO_PORT_PIN *in_pin = (struct IO_PORT_PIN *)params;
+  while(1){
+    if(my_gpio_get(in_pin)){
+      while(my_gpio_get(in_pin));
+      switch_status = 1;
+    }
+    vTaskDelay(50);
+  }
+}
+
 static void a_blink_task(void *params) {
   struct IO_PORT_PIN *led_pin = (struct IO_PORT_PIN *)params;
       while(1){
+        if(switch_status){
         my_gpio_toggle(led_pin);
-        vTaskDelay(100);
+        switch_status = 0;
+        }
+        vTaskDelay(50);
       }
 }
 
