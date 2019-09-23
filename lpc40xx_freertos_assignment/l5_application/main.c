@@ -3,95 +3,73 @@
 
 #include "board_io.h"
 #include "delay.h"
-#include "gpio.h"
+// #include "gpio.h"
+// #include "uart.h"
+// #include "uart_printf.h"
 
 #include "my_gpio.h"
-
-#include "uart.h"
-#include "uart_printf.h"
-
 #include "a_interrupt.h"
 #include "semphr.h"
 
 // static void a_blink_task(void *params);
 // static void a_read_switch(void *params);
-
+/*
 static void uart_task(void *params);
 static void uart0_init(void);
-
+*/
 void a_gpio_producer_isr(void);
 static void a_task_gpio_consumer(void *params);
 extern void a_gpio_isr(void);
 
 static struct IO_PORT_PIN outpin1, outpin2;
 static struct IO_PORT_PIN inpin1, inpin2;
-static uint8_t switch_status = 0;
-
 
 static A_PERIPHERAL_INTERRUPT interrupt_type_gpio;
-static lpc_peripheral_e gpio_interrupt = LPC_PERIPHERAL__GPIO;
-
 static SemaphoreHandle_t switch_signal=NULL;
 
 
 int main(void) {
-   switch_signal = xSemaphoreCreateBinary();
+  switch_signal = xSemaphoreCreateBinary();
   my_gpio_init(1,26,OUT,&outpin1);   //Initialize Port 1 Pin 26 as output
   //my_gpio_init(2,3,OUT,&outpin2);   //Initialize Port 2 Pin 7 as output
   my_gpio_init(0,29,IN,&inpin1);
-  uart0_init();
-  //a_interrupt_create(&interrupt_type_gpio,gpio_interrupt,a_gpio_isr,&inpin1,FALLING_EDGE);
-  //a_interrupt_init(&interrupt_type_gpio);
-   lpc_peripheral__enable_interrupt(gpio_interrupt,a_gpio_producer_isr);
-   LPC_GPIOINT->IO0IntEnR |= (1<<29);
-   NVIC_EnableIRQ(GPIO_IRQn);
+  //uart0_init();
+  a_interrupt_create(&interrupt_type_gpio,LPC_PERIPHERAL__GPIO,a_gpio_producer_isr,&inpin1,RISING_EDGE);
   
   xTaskCreate(a_task_gpio_consumer, "led_toogle_isr", (2048U / sizeof(void *)), (void *)&outpin1, PRIORITY_LOW, NULL);
-  //xTaskCreate(a_read_switch, "sw1", (512U / sizeof(void *)), (void *)&inpin1, PRIORITY_LOW, NULL);
-//while(1);
-  // printf() takes more stack space
-  //xTaskCreate(uart_task, "uart", (512U * 4) / sizeof(void *), NULL, PRIORITY_LOW, NULL);
-//while(1);
   vTaskStartScheduler();
-
-  /**
-   * vTaskStartScheduler() should never return.
-   *
-   * Otherwise, it returning indicates there is not enough free memory or scheduler was explicitly terminated
-   * CPU will now halt forever at this point.
-   */
 
   return 0;
 }
 
 extern void a_gpio_isr(void){
-  uart_printf(UART__0, "a_gpio_producer_isr : Interrupt Occured\n");
   my_gpio_toggle(&outpin1);
-  LPC_GPIOINT->IO0IntClr |= (1<<29);
-    //a_interrupt_clear(&inpin1);
+  a_interrupt_clear(&inpin1);
 }
 
 void a_gpio_producer_isr(void){
-   long yield = 0;
-  //uart_printf(UART__0, "a_gpio_producer_isr : Interrupt Occured");
-  xSemaphoreGiveFromISR(switch_signal,&yield);
+   long semaphore_yld = 0;
+  //uart_printf(UART__0, "a_gpio_producer_isr : Interrupt Occured");  /* will not work cannot write uart_prinf in isr"
+  xSemaphoreGiveFromISR(switch_signal,&semaphore_yld);
   LPC_GPIOINT->IO0IntClr |= (1<<29);
-  portYIELD_FROM_ISR(yield);
-  //uart_printf(UART__0, "a_gpio_producer_isr : Clearing Interrupt");
-  //a_interrupt_clear(&inpin1);
+  portYIELD_FROM_ISR(semaphore_yld);
 }
 
 static void a_task_gpio_consumer(void *params){
   IO_PORT_PIN *op_pin = (IO_PORT_PIN *) params;
   while(1){
-    uart_printf(UART__0, "a_task_gpio_consumer : Waiting for Interrupt\n");
     if(xSemaphoreTake(switch_signal,(TickType_t) 10) == pdTRUE){
       my_gpio_toggle(op_pin);
-      uart_printf(UART__0, "a_task_gpio_consumer : Got Interrupt");
     }
+    vTaskDelay(100);
   }
 }
 
+
+
+/*
+------------------NOT NEEDED FOR THIS ASSIGNMENT-----------------------
+*/
 /*
 
 static void a_read_switch(void *params){
@@ -115,7 +93,8 @@ static void a_blink_task(void *params) {
         vTaskDelay(50);
       }
 }
-*/
+
+
 static void uart_task(void *params) {
   TickType_t previous_tick = 0;
 
@@ -140,3 +119,4 @@ static void uart0_init(void) {
   QueueHandle_t rx_queue = xQueueCreate(32, sizeof(char));
   uart__enable_queues(UART__0, tx_queue, rx_queue);
 }
+*/
