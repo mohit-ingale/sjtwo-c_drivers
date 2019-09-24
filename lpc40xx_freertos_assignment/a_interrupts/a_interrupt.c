@@ -11,12 +11,12 @@ static void a_enable_interrupt(A_PERIPHERAL_INTERRUPT *interrupt_config){
 static int isPowerOfTwo(uint32_t n) 
 { 
     return n && (!(n & (n - 1))); 
-} 
+}
 
 static uint32_t findPosition(uint32_t n) 
 { 
     if (!isPowerOfTwo(n)) 
-        return -1; 
+        return 0;
     unsigned i = 1, pos = 1;
     while (!(i & n)) { 
         i = i << 1; 
@@ -27,18 +27,18 @@ static uint32_t findPosition(uint32_t n)
 } 
 
 static void a_interrupt_dispatcher(void){
-    uint8_t interrupt_pin;
+    uint32_t interrupt_pin=0;
     if(interrupt_pin = findPosition((LPC_GPIOINT->IO0IntStatF) & 0xffffffff)){
+        a_gpio_callback[interrupt_pin-1]();
+        LPC_GPIOINT->IO0IntClr |= (1<<(interrupt_pin-1));
+    }
+    else if(interrupt_pin = findPosition((LPC_GPIOINT->IO0IntStatR) & 0xffffffff)){
         a_gpio_callback[interrupt_pin-1]();
         LPC_GPIOINT->IO0IntClr |= (1<<(interrupt_pin-1));
     }
     else if(interrupt_pin = findPosition((LPC_GPIOINT->IO2IntStatR) & 0xffffffff)){
         a_gpio_callback[interrupt_pin-1]();
         LPC_GPIOINT->IO2IntClr |= (1<<(interrupt_pin-1));
-    }
-    else if(interrupt_pin = findPosition((LPC_GPIOINT->IO0IntStatR) & 0xffffffff)){
-        a_gpio_callback[interrupt_pin-1]();
-        LPC_GPIOINT->IO0IntClr |= (1<<(interrupt_pin-1));
     }
     else if(interrupt_pin = findPosition((LPC_GPIOINT->IO2IntStatF) & 0xffffffff)){
         a_gpio_callback[interrupt_pin-1]();
