@@ -71,7 +71,7 @@ void a_interrupt_create(A_PERIPHERAL_INTERRUPT *interrupt_type, lpc_peripheral_e
                                 function__void_f peripheral_isr_callback, IO_PORT_PIN *interrupt_pin,int edge){
     if(interrupt_pin->port == LPC_GPIO0){
         a_gpio_callback[0][interrupt_pin->pin_num] = peripheral_isr_callback;
-    }else if(interrupt_pin->port == LPC_GPIO0)
+    }else if(interrupt_pin->port == LPC_GPIO2)
     {
         a_gpio_callback[1][interrupt_pin->pin_num] = peripheral_isr_callback;
     }
