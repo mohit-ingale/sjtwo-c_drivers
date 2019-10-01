@@ -93,22 +93,26 @@ static void a_task_pwm_run(void *params){
 static void a_task_adc_run(void *params){
   uint16_t l_a_adc_data;
   uint16_t dutycycle = 50;
+  float adc_voltage = 0.0;
   a_adc_init(1);
   while(1){
     a_adc_start(2);
     l_a_adc_data = a_get_adc_data(2);
     dutycycle = (l_a_adc_data * 100)/4095;
-    uart_printf(UART__0,"ADC_DATA = %f\n",(l_a_adc_data*5.0)/4095);
+    adc_voltage = ((float)l_a_adc_data/4095)*3.3;
+    printf("ADC_DATA = %f\n",adc_voltage);
     xQueueSend(r_pwm_duty_cycle_queue,(void *)&dutycycle,100);
      a_adc_start(4);
     l_a_adc_data = a_get_adc_data(4);
     dutycycle = (l_a_adc_data * 100)/4095;
-    uart_printf(UART__0,"ADC_DATA = %f\n",(l_a_adc_data*5.0)/4095);
+    adc_voltage = (l_a_adc_data * 3.3)/4095;
+    printf("ADC_DATA = %f\n",adc_voltage);
     xQueueSend(g_pwm_duty_cycle_queue,(void *)&dutycycle,100);
      a_adc_start(5);
     l_a_adc_data = a_get_adc_data(5);
     dutycycle = (l_a_adc_data * 100)/4095;
-    uart_printf(UART__0,"ADC_DATA = %f\n",(l_a_adc_data*5.0)/4095);
+    adc_voltage = (l_a_adc_data * 3.3)/4095;
+    printf("ADC_DATA = %f\n",adc_voltage);
     xQueueSend(b_pwm_duty_cycle_queue,(void *)&dutycycle,100);
     // vTaskDelay(100);
   }
