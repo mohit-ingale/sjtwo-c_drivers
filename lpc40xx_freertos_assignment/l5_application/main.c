@@ -91,7 +91,7 @@ static void a_task_pwm_run(void *params){
 static void a_task_adc_run(void *params){
   uint16_t l_a_adc_data;
   uint16_t dutycycle = 50;
-  a_adc_init(2,0);
+  a_adc_init(1);
   while(1){
     a_adc_start(2);
     l_a_adc_data = a_get_adc_data(2);
