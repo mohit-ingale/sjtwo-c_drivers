@@ -10,6 +10,7 @@
  * To get value, reference &_estack.
  */
 extern void *_estack;
+
 /**
  * @{
  * These functions are from entry_point.c and lpc_peripherals.c but they are not declared in the header

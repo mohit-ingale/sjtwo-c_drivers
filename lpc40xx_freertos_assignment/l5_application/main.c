@@ -85,7 +85,7 @@ static void a_task_pwm_run(void *params){
   uint16_t dutycycle = 0;
   const uint32_t config_mask = UINT32_C(7);
   while(1){
-    // uart_printf(UART__0,"config_mask = %d   and = %d\n",config_mask,1&config_mask);
+    printf("config_mask = %d   and = %d\n",config_mask,1&config_mask);
     if(xQueueReceive(r_pwm_duty_cycle_queue,&dutycycle,100)){
       // uart_printf(UART__0,"Received_DATA = %d\n",dutycycle);
       a_pwm_set_duty_cycle(0,dutycycle);
