@@ -15,7 +15,7 @@
 #include "a_interrupt.h"
 #include "semphr.h"
 #include "a_adc.h"
-#include "pwm1.h"
+#include "a_pwm.h"
 #include "queue.h"
 
 
@@ -26,48 +26,56 @@ static void uart_task(void *params);
 */
 static void uart0_init(void);
 
-void a_gpio_producer_isr(void);
-static void a_task_gpio_consumer(void *params);
-extern void a_gpio_isr(void);
+// void a_gpio_producer_isr(void);
+// static void a_task_gpio_consumer(void *params);
+// extern void a_gpio_isr(void);
 
 static void a_task_adc_run(void *params);
 static void a_task_pwm_run(void *params);
 
-static struct IO_PORT_PIN outpin1, outpin2;
-static struct IO_PORT_PIN inpin1, inpin2;
+// static struct IO_PORT_PIN outpin1, outpin2;
+// static struct IO_PORT_PIN inpin1, inpin2;
 
-static A_PERIPHERAL_INTERRUPT interrupt_type_gpio_1,interrupt_type_gpio_2;
-static SemaphoreHandle_t switch_signal=NULL;
+// static A_PERIPHERAL_INTERRUPT interrupt_type_gpio_1,interrupt_type_gpio_2;
+// static SemaphoreHandle_t switch_signal=NULL;
 QueueHandle_t r_pwm_duty_cycle_queue,g_pwm_duty_cycle_queue,b_pwm_duty_cycle_queue;
 
 int main(void) {
-  switch_signal = xSemaphoreCreateBinary();
+  // switch_signal = xSemaphoreCreateBinary();
   uart0_init();
-  my_gpio_init(1,26,OUT,&outpin1);   //Initialize Port 1 Pin 26 as output
-  my_gpio_init(2,3,OUT,&outpin2);   //Initialize Port 2 Pin 7 as output
-  my_gpio_init(0,29,IN,&inpin1);
-  my_gpio_init(0,30,IN,&inpin2);
+  // my_gpio_init(1,26,OUT,&outpin1);   //Initialize Port 1 Pin 26 as output
+  // my_gpio_init(2,3,OUT,&outpin2);   //Initialize Port 2 Pin 7 as output
+  // my_gpio_init(0,29,IN,&inpin1);
+  // my_gpio_init(0,30,IN,&inpin2);
   r_pwm_duty_cycle_queue = xQueueCreate(1,sizeof(uint32_t));
   g_pwm_duty_cycle_queue = xQueueCreate(1,sizeof(uint32_t));
   b_pwm_duty_cycle_queue = xQueueCreate(1,sizeof(uint32_t));
-  pwm1__init_single_edge(1000);
-  // LPC_IOCON->P2_0 = (1<<1);
-  // LPC_IOCON->P2_1 = (1<<1);
-  // LPC_IOCON->P2_2 = (1<<1);
-  gpio__construct_with_function(gpio__port_2,0,gpio__function_1);
-  gpio__construct_with_function(gpio__port_2,1,gpio__function_1);
-  gpio__construct_with_function(gpio__port_2,2,gpio__function_1);
+  a_pwm_init(1000);
+    const uint32_t config_mask = UINT32_C(7);
+
+  LPC_IOCON->P2_0 &= ~(7 << 0);
+  LPC_IOCON->P2_1 &= ~(7 << 0);
+  LPC_IOCON->P2_2 &= ~(7 << 0);
+
+  LPC_IOCON->P2_0 = 1;
+  LPC_IOCON->P2_1 = 1;
+  LPC_IOCON->P2_2 = 1 ;
+    
   
-  pwm1__set_duty_cycle(0,75);
-  pwm1__set_duty_cycle(1,85);
-  pwm1__set_duty_cycle(2,50);
+  // gpio__construct_with_function(gpio__port_2,0,gpio__function_1);
+  // gpio__construct_with_function(gpio__port_2,1,gpio__function_1);
+  // gpio__construct_with_function(gpio__port_2,2,gpio__function_1);
+  
+  // pwm1__set_duty_cycle(0,75);
+  // pwm1__set_duty_cycle(1,85);
+  // pwm1__set_duty_cycle(2,50);
   // uart0_init();
   // a_interrupt_create(&interrupt_type_gpio_1,LPC_PERIPHERAL__GPIO,a_gpio_producer_isr,&inpin1,RISING_EDGE);
   // a_interrupt_create(&interrupt_type_gpio_2,LPC_PERIPHERAL__GPIO,a_gpio_isr,&inpin2,FALLING_EDGE);
   
   // xTaskCreate(a_task_gpio_consumer, "led_toogle_isr", (2048U / sizeof(void *)), (void *)&outpin1, PRIORITY_LOW, NULL);
-  xTaskCreate(a_task_adc_run, "adc_task", (2048U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
-  xTaskCreate(a_task_pwm_run, "pwm_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_task_adc_run, "adc_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_task_pwm_run, "pwm_task", (2048U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
   vTaskStartScheduler();
 
   return 0;
@@ -75,15 +83,20 @@ int main(void) {
 
 static void a_task_pwm_run(void *params){
   uint16_t dutycycle = 0;
+  const uint32_t config_mask = UINT32_C(7);
   while(1){
+    // uart_printf(UART__0,"config_mask = %d   and = %d\n",config_mask,1&config_mask);
     if(xQueueReceive(r_pwm_duty_cycle_queue,&dutycycle,100)){
-      pwm1__set_duty_cycle(0,dutycycle);
+      // uart_printf(UART__0,"Received_DATA = %d\n",dutycycle);
+      a_pwm_set_duty_cycle(0,dutycycle);
     }
     if(xQueueReceive(g_pwm_duty_cycle_queue,&dutycycle,100)){
-      pwm1__set_duty_cycle(1,dutycycle);
+      // uart_printf(UART__0,"Received_DATA = %d\n",dutycycle);
+      a_pwm_set_duty_cycle(1,dutycycle);
     }
     if(xQueueReceive(b_pwm_duty_cycle_queue,&dutycycle,100)){
-      pwm1__set_duty_cycle(2,dutycycle);
+      // uart_printf(UART__0,"Received_DATA = %d\n",dutycycle);
+      a_pwm_set_duty_cycle(2,dutycycle);
     }
   }
 }
@@ -112,6 +125,11 @@ static void a_task_adc_run(void *params){
   }
 }
 
+
+/*
+------------------NOT NEEDED FOR THIS ASSIGNMENT-----------------------
+*/
+/*
 extern void a_gpio_isr(void){
   my_gpio_toggle(&outpin2);
   //a_interrupt_clear(&inpin1);
@@ -137,10 +155,7 @@ static void a_task_gpio_consumer(void *params){
 
 
 
-/*
-------------------NOT NEEDED FOR THIS ASSIGNMENT-----------------------
-*/
-/*
+
 
 static void a_read_switch(void *params){
   struct IO_PORT_PIN *in_pin = (struct IO_PORT_PIN *)params;

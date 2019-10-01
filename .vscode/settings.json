@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "lpc40xx.h": "c"
+        "lpc40xx.h": "c",
+        "a_adc.h": "c",
+        "a_interrupt.h": "c"
     }
 }
