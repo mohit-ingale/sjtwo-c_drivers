@@ -51,17 +51,6 @@ int main(void) {
   g_pwm_duty_cycle_queue = xQueueCreate(1,sizeof(uint32_t));
   b_pwm_duty_cycle_queue = xQueueCreate(1,sizeof(uint32_t));
   a_pwm_init(1000);
-    const uint32_t config_mask = UINT32_C(7);
-
-  LPC_IOCON->P2_0 &= ~(7 << 0);
-  LPC_IOCON->P2_1 &= ~(7 << 0);
-  LPC_IOCON->P2_2 &= ~(7 << 0);
-
-  LPC_IOCON->P2_0 = 1;
-  LPC_IOCON->P2_1 = 1;
-  LPC_IOCON->P2_2 = 1 ;
-    
-  
   // gpio__construct_with_function(gpio__port_2,0,gpio__function_1);
   // gpio__construct_with_function(gpio__port_2,1,gpio__function_1);
   // gpio__construct_with_function(gpio__port_2,2,gpio__function_1);
@@ -85,7 +74,7 @@ static void a_task_pwm_run(void *params){
   uint16_t dutycycle = 0;
   const uint32_t config_mask = UINT32_C(7);
   while(1){
-    printf("config_mask = %d   and = %d\n",config_mask,1&config_mask);
+    // printf("config_mask = %d   and = %d\n",config_mask,1&config_mask);
     if(xQueueReceive(r_pwm_duty_cycle_queue,&dutycycle,100)){
       // uart_printf(UART__0,"Received_DATA = %d\n",dutycycle);
       a_pwm_set_duty_cycle(0,dutycycle);
