@@ -18,12 +18,14 @@ void a_adc_init(int burst_mode){
     // LPC_IOCON->P1_31 |= (1<<7);
     LPC_SC->PCONP |= (1<<12);
     LPC_ADC->CR = 0;
-    LPC_ADC->CR = (1<<21) | (1<<9) | (1<<16);
+    LPC_ADC->CR = (1<<21) | (1<<9);// | (1<<16);
 }
 
 void a_adc_start(int adc_number){
-    LPC_ADC->CR |= (1<<adc_number);
-    // LPC_ADC->CR |= (1<<24);
+    uint8_t adc_number_mask = 0x00;
+    adc_number_mask |= (1<<adc_number);
+    LPC_ADC->CR |= adc_number_mask;
+    LPC_ADC->CR |= (1<<24);
 }
 
 uint16_t a_get_adc_data(int adc_number){

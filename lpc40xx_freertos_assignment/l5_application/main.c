@@ -98,17 +98,17 @@ static void a_task_adc_run(void *params){
     a_adc_start(2);
     l_a_adc_data = a_get_adc_data(2);
     dutycycle = (l_a_adc_data * 100)/4095;
-    // uart_printf(UART__0,"ADC_DATA = %d\n",dutycycle);
+    uart_printf(UART__0,"ADC_DATA = %f\n",(l_a_adc_data*5.0)/4095);
     xQueueSend(r_pwm_duty_cycle_queue,(void *)&dutycycle,100);
      a_adc_start(4);
     l_a_adc_data = a_get_adc_data(4);
     dutycycle = (l_a_adc_data * 100)/4095;
-    // uart_printf(UART__0,"ADC_DATA = %d\n",dutycycle);
+    uart_printf(UART__0,"ADC_DATA = %f\n",(l_a_adc_data*5.0)/4095);
     xQueueSend(g_pwm_duty_cycle_queue,(void *)&dutycycle,100);
      a_adc_start(5);
     l_a_adc_data = a_get_adc_data(5);
     dutycycle = (l_a_adc_data * 100)/4095;
-    // uart_printf(UART__0,"ADC_DATA = %d\n",dutycycle);
+    uart_printf(UART__0,"ADC_DATA = %f\n",(l_a_adc_data*5.0)/4095);
     xQueueSend(b_pwm_duty_cycle_queue,(void *)&dutycycle,100);
     // vTaskDelay(100);
   }
