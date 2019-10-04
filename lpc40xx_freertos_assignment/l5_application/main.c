@@ -6,10 +6,6 @@
 #include "board_io.h"
 #include "delay.h"
 
-#include "uart.h"
-// #include "gpio.h"
-// #include "uart.h"
-// #include "uart_printf.h"
 
 #include "my_gpio.h"
 #include "a_interrupt.h"
@@ -24,7 +20,6 @@
 /*
 static void uart_task(void *params);
 */
-static void uart0_init(void);
 
 // void a_gpio_producer_isr(void);
 // static void a_task_gpio_consumer(void *params);
@@ -42,7 +37,7 @@ QueueHandle_t r_pwm_duty_cycle_queue,g_pwm_duty_cycle_queue,b_pwm_duty_cycle_que
 
 int main(void) {
   // switch_signal = xSemaphoreCreateBinary();
-  uart0_init();
+
   // my_gpio_init(1,26,OUT,&outpin1);   //Initialize Port 1 Pin 26 as output
   // my_gpio_init(2,3,OUT,&outpin2);   //Initialize Port 2 Pin 7 as output
   // my_gpio_init(0,29,IN,&inpin1);
@@ -188,13 +183,5 @@ static void uart_task(void *params) {
   }
 }
 */
-static void uart0_init(void) {
-  // Note: PIN functions are initialized by board_io__initialize() for P0.2(Tx) and P0.3(Rx)
-  uart__init(UART__0, clock__get_peripheral_clock_hz(), 115200);
 
-  // Make UART more efficient by backing it with RTOS queues (optional but highly recommended with RTOS)
-  QueueHandle_t tx_queue = xQueueCreate(128, sizeof(char));
-  QueueHandle_t rx_queue = xQueueCreate(32, sizeof(char));
-  uart__enable_queues(UART__0, tx_queue, rx_queue);
-}
 
