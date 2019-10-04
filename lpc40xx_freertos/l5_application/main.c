@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -5,42 +7,27 @@
 #include "delay.h"
 #include "gpio.h"
 
-#include "uart.h"
-#include "uart_printf.h"
-
 static void blink_task(void *params);
 static void uart_task(void *params);
-
 static void blink_on_startup(gpio_s gpio, int count);
-static void uart0_init(void);
 
 static gpio_s led0, led1;
 
 int main(void) {
-  uart0_init();
-  uart_puts__polled(UART__0, "Startup");
-
   // Construct the LEDs and blink a startup sequence
   led0 = board_io__get_led0();
   led1 = board_io__get_led1();
   blink_on_startup(led1, 2);
 
-  uart_puts__polled(UART__0, "Creating tasks");
+  puts("\n--------\nStartup");
   xTaskCreate(blink_task, "led0", (512U / sizeof(void *)), (void *)&led0, PRIORITY_LOW, NULL);
   xTaskCreate(blink_task, "led1", (512U / sizeof(void *)), (void *)&led1, PRIORITY_LOW, NULL);
 
-  // printf() takes more stack space
-  xTaskCreate(uart_task, "uart", (512U * 4) / sizeof(void *), NULL, PRIORITY_LOW, NULL);
+  // printf() takes more stack space, size this tasks' stack higher
+  xTaskCreate(uart_task, "uart", (512U * 8) / sizeof(void *), NULL, PRIORITY_LOW, NULL);
 
-  uart_puts__polled(UART__0, "Starting RTOS");
-  vTaskStartScheduler();
-
-  /**
-   * vTaskStartScheduler() should never return.
-   *
-   * Otherwise, it returning indicates there is not enough free memory or scheduler was explicitly terminated
-   * CPU will now halt forever at this point.
-   */
+  puts("Starting RTOS");
+  vTaskStartScheduler(); // This function never returns unless RTOS scheduler runs out of memory and fails
 
   return 0;
 }
@@ -54,18 +41,29 @@ static void blink_task(void *params) {
   }
 }
 
+// This sends periodic messages over printf() which uses system_calls.c to send them to UART0
 static void uart_task(void *params) {
   TickType_t previous_tick = 0;
+  long ticks = 0;
 
   while (true) {
-    vTaskDelayUntil(&previous_tick, 500);
+    // This loop will repeat at precise task delay, even if the logic below takes variable amount of ticks
+    vTaskDelayUntil(&previous_tick, 2000);
 
-    // Wait until the data is fully printed before moving on
-    const unsigned ticks = xTaskGetTickCount();
-    uart_printf__polled(UART__0, "%6u: Hello world\n", ticks);
+    /* Calls to fprintf(stderr, ...) uses polled UART driver, so this entire output will be fully sent out
+     * before this function returns. See system_calls.c for actual implementation.
+     * This is useful to print information inside of interrupts as you cannot use printf() inside an ISR
+     */
+    ticks = xTaskGetTickCount();
+    fprintf(stderr, "This is a polled version of printf used for debugging ... finished in");
+    fprintf(stderr, " %lu ticks\n", (xTaskGetTickCount() - ticks));
 
-    // This deposits data to an outgoing queue and doesn't block the CPU
-    uart_printf(UART__0, " ... and a more efficient printf...\n");
+    /* This deposits data to an outgoing queue and doesn't block the CPU
+     * Data will be sent later, but this function would return earlier
+     */
+    ticks = xTaskGetTickCount();
+    printf("This is a more efficient printf ... finished in");
+    printf(" %lu ticks\n\n", (xTaskGetTickCount() - ticks));
   }
 }
 
@@ -75,14 +73,4 @@ static void blink_on_startup(gpio_s gpio, int blinks) {
     delay__ms(250);
     gpio__toggle(gpio);
   }
-}
-
-static void uart0_init(void) {
-  // Note: PIN functions are initialized by board_io__initialize() for P0.2(Tx) and P0.3(Rx)
-  uart__init(UART__0, clock__get_peripheral_clock_hz(), 115200);
-
-  // Make UART more efficient by backing it with RTOS queues (optional but highly recommended with RTOS)
-  QueueHandle_t tx_queue = xQueueCreate(128, sizeof(char));
-  QueueHandle_t rx_queue = xQueueCreate(32, sizeof(char));
-  uart__enable_queues(UART__0, tx_queue, rx_queue);
 }

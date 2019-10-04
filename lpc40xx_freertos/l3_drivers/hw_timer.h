@@ -6,21 +6,21 @@
 
 /**
  * The type of timers supported by LPC40xx
- * Note that for the SJ-2 project, lpc_timer1 is being used by to keep track of 'up time' (by sys_time.h)
+ * @note For this SJ-2 project, lpc_timer1 is being used by to keep track of 'up time' (by sys_time.h)
  */
 typedef enum {
-  lpc_timer0 = 0,
-  lpc_timer1,
-  lpc_timer2,
-  lpc_timer3,
+  LPC_TIMER__0 = 0,
+  LPC_TIMER__1,
+  LPC_TIMER__2,
+  LPC_TIMER__3,
 } lpc_timer_e;
 
-/// There are 4 match registers for HW timer on the LPC 40xx
+/// There are 4 match registers for HW timer on the LPC40xx
 typedef enum {
-  lpc_timer__mr0 = 0,
-  lpc_timer__mr1,
-  lpc_timer__mr2,
-  lpc_timer__mr3,
+  LPC_TIMER__MR0 = 0,
+  LPC_TIMER__MR1,
+  LPC_TIMER__MR2,
+  LPC_TIMER__MR3,
 } lpc_timer__mr_e;
 
 /**
@@ -35,15 +35,17 @@ void hw_timer__enable(lpc_timer_e timer, const uint32_t prescalar_divider, funct
 
 /**
  * When the HW timer counts up and matches the mr_value of type lpc_timer__mr_e then it will:
- *   - Generate an interrupt and invoke the callback registerd during hw_timer__enable()
- *   - Reset the TC on match
+ *   - Generate an interrupt and invoke the callback registered during hw_timer__enable()
  *
- * Unfortunately with this API, it only makes sense to use one match register, as the first one will reset the HW timer
- * and not allow further match registers to work, but that is all we needed for now, and rest is YAGNI
+ * @note All match registers use the same interrupt registered through hw_timer__enable()
  */
-void hw_timer__enable_match_isr_and_reset(lpc_timer_e timer, lpc_timer__mr_e mr_type, const uint32_t mr_value);
+void hw_timer__enable_match_isr(lpc_timer_e timer, lpc_timer__mr_e mr_type, const uint32_t mr_value);
 
 /// When isr_callback fires that was set by hw_timer__enable(), then this should be used to clear the MR interrupt
 void hw_timer__acknowledge_interrupt(lpc_timer_e timer, lpc_timer__mr_e mr_type);
 
+/// @returns the HW timer value
 uint32_t hw_timer__get_value(lpc_timer_e timer);
+
+/// Sets (overwrites) the current HW timer value (TC register)
+void hw_timer__set_value(lpc_timer_e timer, uint32_t tc_value);
