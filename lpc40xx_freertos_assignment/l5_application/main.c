@@ -20,7 +20,7 @@ int main(void) {
    {
        fprintf(stderr, "Couldn't create semaphore\n");
    }
-  a_ssp_init(2);
+  a_ssp_init(2,6);
   // xTaskCreate(a_task_spi, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
@@ -29,24 +29,46 @@ int main(void) {
   return 0;
 }
 
+void print_binary(uint8_t number)
+{
+    if (number) {
+        print_binary(number >> 1);
+        putc((number & 1) ? '1' : '0', stdout);
+    }
+}
+
 static void a_verify_adesco_signature(){
+  STATUS_REGISTER_ADESTO a_status_register_flash_memory;
   EXTERNAL_FLASH_SIGNATURE a_external_device_signature;
   while(1){
     if(xSemaphoreTake(xMutex,( TickType_t )10) == pdTRUE){
+      a_status_register_flash_memory = a_ssp_read_device_status();
       a_external_device_signature = a_ssp_read_device_signature();
       if(a_external_device_signature.manufacturer_id != 0x1F){
         fprintf(stderr, "Manufacturer ID read failure\n");
         vTaskSuspend(NULL); // Kill this task
       }
       xSemaphoreGive(xMutex);
+      printf("Status Byte 1 = ");
+      print_binary(a_status_register_flash_memory.status_register_byte1);
+      printf("\n");
+      printf("Status Byte 2 = ");
+      print_binary(a_status_register_flash_memory.status_register_byte2);
+      printf("\n");
+      // printf("Status Byte 1 = %x\n",a_status_register_flash_memory.status_register_byte1);
+      // printf("Status Byte 2 = %x\n",a_status_register_flash_memory.status_register_byte2);
     }
   }
 }
 
 static void a_task_spi(void *params){
   EXTERNAL_FLASH_SIGNATURE a_external_device_signature;
+  STATUS_REGISTER_ADESTO a_status_register_flash_memory;
   uint8_t data = 0;
   while(1){
+    // a_status_register_flash_memory = a_ssp_read_device_status();
+    // printf("Status Byte 1 = %x\n",a_status_register_flash_memory.status_register_byte1);
+    // printf("Status Byte 2 = %x\n",a_status_register_flash_memory.status_register_byte2);
     a_external_device_signature = a_ssp_read_device_signature();
     printf("Manufacture ID = %x\n",a_external_device_signature.manufacturer_id);
     printf("Device ID = %x\n",a_external_device_signature.device_id_1);
