@@ -23,7 +23,7 @@ int main(void) {
   a_ssp_init(2,6);
   // xTaskCreate(a_task_spi, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  //xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   vTaskStartScheduler();
 
   return 0;
@@ -38,7 +38,7 @@ void print_binary(uint8_t number)
 }
 
 static void a_verify_adesco_signature(){
-  STATUS_REGISTER_ADESTO a_status_register_flash_memory;
+  static STATUS_REGISTER_ADESTO a_status_register_flash_memory;
   EXTERNAL_FLASH_SIGNATURE a_external_device_signature;
   while(1){
     if(xSemaphoreTake(xMutex,( TickType_t )10) == pdTRUE){
@@ -48,16 +48,12 @@ static void a_verify_adesco_signature(){
         fprintf(stderr, "Manufacturer ID read failure\n");
         vTaskSuspend(NULL); // Kill this task
       }
+      print_status(&a_status_register_flash_memory);
       xSemaphoreGive(xMutex);
-      printf("Status Byte 1 = ");
-      print_binary(a_status_register_flash_memory.status_register_byte1);
-      printf("\n");
-      printf("Status Byte 2 = ");
-      print_binary(a_status_register_flash_memory.status_register_byte2);
-      printf("\n");
       // printf("Status Byte 1 = %x\n",a_status_register_flash_memory.status_register_byte1);
       // printf("Status Byte 2 = %x\n",a_status_register_flash_memory.status_register_byte2);
     }
+    vTaskDelay(500);
   }
 }
 

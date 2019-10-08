@@ -42,9 +42,10 @@ void a_ssp_chip_select(int port, int pin, A_SSP_CHIP_SELECT state){
 EXTERNAL_FLASH_SIGNATURE a_ssp_read_device_signature(){
     uint8_t data = 0;
     EXTERNAL_FLASH_SIGNATURE a_external_flash_signature;
-    STATUS_REGISTER_ADESTO a_external_flash_status;
-    a_external_flash_status = a_ssp_read_device_status();
-    if(!(a_external_flash_status.status_register_byte2 & 0x01)){
+    // STATUS_REGISTER_ADESTO a_external_flash_status;
+    // a_external_flash_status = a_ssp_read_device_status();
+    // if(!(a_external_flash_status.status_register_byte2.ready & 0x01))
+    {
         a_ssp_chip_select(1,10,ASSERT);
         (void) a_ssp_send_receive_1byte(0x9F);
         data = a_ssp_send_receive_1byte(0xff);
@@ -57,9 +58,9 @@ EXTERNAL_FLASH_SIGNATURE a_ssp_read_device_signature(){
         a_external_flash_signature.extended_device_information = data;
         a_ssp_chip_select(1,10,DEASSERT);
     }
-    else{
-        fprintf(stderr, "Device not ready for reading\n");
-    }
+    // else{
+    //     fprintf(stderr, "Device not ready for reading\n");
+    //}
     return a_external_flash_signature;
 }
 
@@ -69,9 +70,28 @@ STATUS_REGISTER_ADESTO a_ssp_read_device_status(){
     a_ssp_chip_select(1,10,ASSERT);
     (void) a_ssp_send_receive_1byte(0x05);
     data = a_ssp_send_receive_1byte(0xff);
-    a_external_flash_status.status_register_byte1 = data;
+    a_external_flash_status.status_register_byte1.bpl = (data&0b10000000)>>7;
+    a_external_flash_status.status_register_byte1.epe = (data&0b00100000)>>5;
+    a_external_flash_status.status_register_byte1.wpp = (data&0b00010000)>>4;
+    a_external_flash_status.status_register_byte1.activity = (data&0b00001000)>>3;
+    a_external_flash_status.status_register_byte1.bp0 = (data&0b00000100)>>2;
+    a_external_flash_status.status_register_byte1.wel = (data&0b00000010)>>1;
+    a_external_flash_status.status_register_byte1.ready = (data&0b00000001)>>0;
     data = a_ssp_send_receive_1byte(0xff);
-    a_external_flash_status.status_register_byte2 = data;
+    a_external_flash_status.status_register_byte2.RSTE = (data&0b00010000)>>4;
+    a_external_flash_status.status_register_byte2.ready = (data&0b00000001)>>0;
     a_ssp_chip_select(1,10,DEASSERT);
     return a_external_flash_status;
+}
+
+void print_status(const STATUS_REGISTER_ADESTO * a_external_flash_status){
+    printf("Status BPL : %d\n",a_external_flash_status->status_register_byte1.bpl);
+    printf("Status EPE : %d\n",a_external_flash_status->status_register_byte1.epe);
+    printf("Status WPP : %d\n",a_external_flash_status->status_register_byte1.wpp);
+    printf("Status Activity : %d\n",a_external_flash_status->status_register_byte1.activity);
+    printf("Status BP0 : %d\n",a_external_flash_status->status_register_byte1.bp0);
+    printf("Status WEL : %d\n",a_external_flash_status->status_register_byte1.wel);
+    printf("Status Ready : %d\n",a_external_flash_status->status_register_byte1.ready);
+    printf("Status  RSTE: %d\n",a_external_flash_status->status_register_byte2.RSTE);
+    printf("Status  Ready: %d\n",a_external_flash_status->status_register_byte2.ready);
 }
