@@ -29,14 +29,6 @@ int main(void) {
   return 0;
 }
 
-void print_binary(uint8_t number)
-{
-    if (number) {
-        print_binary(number >> 1);
-        putc((number & 1) ? '1' : '0', stdout);
-    }
-}
-
 static void a_verify_adesco_signature(){
   static STATUS_REGISTER_ADESTO a_status_register_flash_memory;
   EXTERNAL_FLASH_SIGNATURE a_external_device_signature;
@@ -50,8 +42,6 @@ static void a_verify_adesco_signature(){
       }
       xSemaphoreGive(xMutex);
       print_status(&a_status_register_flash_memory);
-      // printf("Status Byte 1 = %x\n",a_status_register_flash_memory.status_register_byte1);
-      // printf("Status Byte 2 = %x\n",a_status_register_flash_memory.status_register_byte2);
     }
     vTaskDelay(500);
   }
@@ -63,8 +53,6 @@ static void a_task_spi(void *params){
   uint8_t data = 0;
   while(1){
     // a_status_register_flash_memory = a_ssp_read_device_status();
-    // printf("Status Byte 1 = %x\n",a_status_register_flash_memory.status_register_byte1);
-    // printf("Status Byte 2 = %x\n",a_status_register_flash_memory.status_register_byte2);
     a_external_device_signature = a_ssp_read_device_signature();
     printf("Manufacture ID = %x\n",a_external_device_signature.manufacturer_id);
     printf("Device ID = %x\n",a_external_device_signature.device_id_1);
