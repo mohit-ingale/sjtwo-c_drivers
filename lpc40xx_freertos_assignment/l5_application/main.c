@@ -23,7 +23,7 @@ int main(void) {
   a_ssp_init(2,6);
   // xTaskCreate(a_task_spi, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  //xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   vTaskStartScheduler();
 
   return 0;
@@ -48,8 +48,8 @@ static void a_verify_adesco_signature(){
         fprintf(stderr, "Manufacturer ID read failure\n");
         vTaskSuspend(NULL); // Kill this task
       }
-      print_status(&a_status_register_flash_memory);
       xSemaphoreGive(xMutex);
+      print_status(&a_status_register_flash_memory);
       // printf("Status Byte 1 = %x\n",a_status_register_flash_memory.status_register_byte1);
       // printf("Status Byte 2 = %x\n",a_status_register_flash_memory.status_register_byte2);
     }

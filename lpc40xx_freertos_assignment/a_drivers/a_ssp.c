@@ -42,9 +42,9 @@ void a_ssp_chip_select(int port, int pin, A_SSP_CHIP_SELECT state){
 EXTERNAL_FLASH_SIGNATURE a_ssp_read_device_signature(){
     uint8_t data = 0;
     EXTERNAL_FLASH_SIGNATURE a_external_flash_signature;
-    // STATUS_REGISTER_ADESTO a_external_flash_status;
-    // a_external_flash_status = a_ssp_read_device_status();
-    // if(!(a_external_flash_status.status_register_byte2.ready & 0x01))
+    STATUS_REGISTER_ADESTO a_external_flash_status;
+    a_external_flash_status = a_ssp_read_device_status();
+    if(!(a_external_flash_status.status_register_byte2.ready & 0x01))
     {
         a_ssp_chip_select(1,10,ASSERT);
         (void) a_ssp_send_receive_1byte(0x9F);
@@ -58,9 +58,9 @@ EXTERNAL_FLASH_SIGNATURE a_ssp_read_device_signature(){
         a_external_flash_signature.extended_device_information = data;
         a_ssp_chip_select(1,10,DEASSERT);
     }
-    // else{
-    //     fprintf(stderr, "Device not ready for reading\n");
-    //}
+    else{
+        fprintf(stderr, "Device not ready for reading\n");
+    }
     return a_external_flash_signature;
 }
 
