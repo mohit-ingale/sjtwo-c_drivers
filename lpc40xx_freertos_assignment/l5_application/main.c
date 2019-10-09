@@ -41,6 +41,7 @@ static void a_verify_adesco_signature(){
         vTaskSuspend(NULL); // Kill this task
       }
       xSemaphoreGive(xMutex);
+      printf("Manufacture ID = %x\n",a_external_device_signature.manufacturer_id);
       print_status(&a_status_register_flash_memory);
     }
     vTaskDelay(500);
