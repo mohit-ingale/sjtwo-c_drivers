@@ -8,5 +8,6 @@
         "string": "c",
         "string_view": "c",
         "vector": "c"
-    }
+    },
+    "python.pythonPath": "/usr/bin/python3"
 }

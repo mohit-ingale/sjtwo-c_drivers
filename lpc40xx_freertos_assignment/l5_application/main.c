@@ -42,6 +42,9 @@ static void a_verify_adesco_signature(){
       }
       xSemaphoreGive(xMutex);
       printf("Manufacture ID = %x\n",a_external_device_signature.manufacturer_id);
+      printf("Device ID = %x\n",a_external_device_signature.device_id_1);
+    printf("Device ID = %x\n",a_external_device_signature.device_id_2);
+    printf("Extended Device Data = %x\n",a_external_device_signature.extended_device_information);
       print_status(&a_status_register_flash_memory);
     }
     vTaskDelay(500);
