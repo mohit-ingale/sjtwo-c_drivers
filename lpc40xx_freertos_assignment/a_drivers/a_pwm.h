@@ -8,5 +8,5 @@
 
 void a_pwm_init(uint32_t pwm_frequency);
 
-void a_pwm_set_duty_cycle(uint8_t duty_cycle,uint8_t pwm1_channel);
+void a_pwm_set_duty_cycle(uint8_t duty_cycle, uint8_t pwm1_channel);
 #endif

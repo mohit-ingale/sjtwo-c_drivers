@@ -2,6 +2,12 @@
     "files.associations": {
         "lpc40xx.h": "c",
         "a_adc.h": "c",
-        "a_interrupt.h": "c"
-    }
+        "a_interrupt.h": "c",
+        "array": "c",
+        "iterator": "c",
+        "string": "c",
+        "string_view": "c",
+        "vector": "c"
+    },
+    "python.pythonPath": "/usr/bin/python3"
 }
