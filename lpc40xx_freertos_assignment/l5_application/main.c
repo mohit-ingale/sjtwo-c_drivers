@@ -1,12 +1,12 @@
 #include <stdio.h>
 
 #include "FreeRTOS.h"
-#include "task.h"
+#include "a_ssp.h"
 #include "delay.h"
 #include "my_gpio.h"
-#include "a_ssp.h"
 #include "semphr.h"
-#include "sj2_cli.h"
+#include "task.h"
+//#include "sj2_cli.h"
 
 SemaphoreHandle_t xMutex;
 
@@ -14,22 +14,19 @@ static void a_verify_adesco_signature();
 
 static void a_task_spi(void *params);
 
-
 int main(void) {
   xMutex = xSemaphoreCreateMutex();
-   if( xMutex == NULL )
-   {
-       fprintf(stderr, "Couldn't create semaphore\n");
-   }
-  a_ssp_init(2,6);
+  if (xMutex == NULL) {
+    fprintf(stderr, "Couldn't create semaphore\n");
+  }
+  a_ssp_init(2, 6);
 
   // xTaskCreate(a_task_spi, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
 
   sj2_cli__init();
-  UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
-
+  // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
 
   puts("Starting RTOS");
   vTaskStartScheduler();
@@ -37,39 +34,39 @@ int main(void) {
   return 0;
 }
 
-static void a_verify_adesco_signature(){
+static void a_verify_adesco_signature() {
   static STATUS_REGISTER_ADESTO a_status_register_flash_memory;
   EXTERNAL_FLASH_SIGNATURE a_external_device_signature;
-  while(1){
-    if(xSemaphoreTake(xMutex,( TickType_t )10) == pdTRUE){
+  while (1) {
+    if (xSemaphoreTake(xMutex, (TickType_t)10) == pdTRUE) {
       a_status_register_flash_memory = a_ssp_read_device_status();
       a_external_device_signature = a_ssp_read_device_signature();
-      if(a_external_device_signature.manufacturer_id != 0x1F){
+      if (a_external_device_signature.manufacturer_id != 0x1F) {
         fprintf(stderr, "Manufacturer ID read failure\n");
         vTaskSuspend(NULL); // Kill this task
       }
       xSemaphoreGive(xMutex);
-      printf("Manufacture ID = %x\n",a_external_device_signature.manufacturer_id);
-      printf("Device ID = %x\n",a_external_device_signature.device_id_1);
-    printf("Device ID = %x\n",a_external_device_signature.device_id_2);
-    printf("Extended Device Data = %x\n",a_external_device_signature.extended_device_information);
-      print_status(&a_status_register_flash_memory);
+      // printf("Manufacture ID = %x\n", a_external_device_signature.manufacturer_id);
+      // printf("Device ID = %x\n", a_external_device_signature.device_id_1);
+      // printf("Device ID = %x\n", a_external_device_signature.device_id_2);
+      // printf("Extended Device Data = %x\n", a_external_device_signature.extended_device_information);
+      // print_status(&a_status_register_flash_memory);
     }
     vTaskDelay(500);
   }
 }
 
-static void a_task_spi(void *params){
+static void a_task_spi(void *params) {
   EXTERNAL_FLASH_SIGNATURE a_external_device_signature;
   STATUS_REGISTER_ADESTO a_status_register_flash_memory;
   uint8_t data = 0;
-  while(1){
+  while (1) {
     // a_status_register_flash_memory = a_ssp_read_device_status();
     a_external_device_signature = a_ssp_read_device_signature();
-    printf("Manufacture ID = %x\n",a_external_device_signature.manufacturer_id);
-    printf("Device ID = %x\n",a_external_device_signature.device_id_1);
-    printf("Device ID = %x\n",a_external_device_signature.device_id_2);
-    printf("Extended Device Data = %x\n",a_external_device_signature.extended_device_information);
+    printf("Manufacture ID = %x\n", a_external_device_signature.manufacturer_id);
+    printf("Device ID = %x\n", a_external_device_signature.device_id_1);
+    printf("Device ID = %x\n", a_external_device_signature.device_id_2);
+    printf("Extended Device Data = %x\n", a_external_device_signature.extended_device_information);
     vTaskDelay(1000);
   }
 }
@@ -192,5 +189,3 @@ static void uart_task(void *params) {
   }
 }
 */
-
-
