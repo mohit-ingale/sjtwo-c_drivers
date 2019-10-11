@@ -6,6 +6,7 @@
 #include "my_gpio.h"
 #include "a_ssp.h"
 #include "semphr.h"
+#include "sj2_cli.h"
 
 SemaphoreHandle_t xMutex;
 
@@ -21,9 +22,16 @@ int main(void) {
        fprintf(stderr, "Couldn't create semaphore\n");
    }
   a_ssp_init(2,6);
+
   // xTaskCreate(a_task_spi, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
   xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+
+  sj2_cli__init();
+  UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
+
+
+  puts("Starting RTOS");
   vTaskStartScheduler();
 
   return 0;
