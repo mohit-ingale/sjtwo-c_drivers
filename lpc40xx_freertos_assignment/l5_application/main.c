@@ -1,38 +1,82 @@
 #include <stdio.h>
 
 #include "FreeRTOS.h"
-#include "a_ssp.h"
+#include "a_uart.h"
 #include "delay.h"
-#include "my_gpio.h"
-#include "semphr.h"
+#include "queue.h"
+#include "sj2_cli.h"
 #include "task.h"
-//#include "sj2_cli.h"
 
-SemaphoreHandle_t xMutex;
+static void a_uart_task_tx(void *params);
+static void a_uart_task_rx(void *params);
+static void a_uart_task_rx_from_queue(void *params);
+void a_uart_rx_isr();
 
-static void a_verify_adesco_signature();
-
-static void a_task_spi(void *params);
+QueueHandle_t xQueueRead;
 
 int main(void) {
-  xMutex = xSemaphoreCreateMutex();
-  if (xMutex == NULL) {
-    fprintf(stderr, "Couldn't create semaphore\n");
-  }
-  a_ssp_init(2, 6);
+  a_uart_init(UART3, 9600);
+  a_uart_rx_enable(UART3, a_uart_rx_isr);
 
-  // xTaskCreate(a_task_spi, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  xTaskCreate(a_verify_adesco_signature, "spi_task", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xQueueRead = xQueueCreate(10, sizeof(uint8_t));
+  if (xQueueRead == NULL) {
+    printf("Queue not created\n");
+  }
+
+  xTaskCreate(a_uart_task_tx, "uart_task_tx", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  // xTaskCreate(a_uart_task_rx, "uart_task_rx", (8192U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_uart_task_rx_from_queue, "uart_task_rx_queue", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
 
   sj2_cli__init();
   // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
-
-  puts("Starting RTOS");
+  // puts("Starting RTOS\n");
   vTaskStartScheduler();
-
   return 0;
 }
+
+void a_uart_rx_isr() {
+  uint8_t data;
+  int taskgive;
+  fprintf(stderr, "Why i got interrupted = %d\n", a_uart_interrupt_which(UART3) >> 1);
+  a_uart_rx(UART3, &data);
+  xQueueSendFromISR(xQueueRead, &data, &taskgive);
+  if (taskgive) {
+    taskYIELD();
+  }
+}
+
+static void a_uart_task_tx(void *params) {
+  while (1) {
+    // printf("Transmitting The character\n");
+    a_uart_tx(UART3, (uint8_t)'a');
+    vTaskDelay(100);
+  }
+}
+
+static void a_uart_task_rx(void *params) {
+  uint8_t data;
+  while (1) {
+    printf("Receving The character\n");
+    a_uart_rx(UART3, &data);
+    printf("Received Data = %c\n", data);
+    vTaskDelay(100);
+  }
+}
+
+static void a_uart_task_rx_from_queue(void *params) {
+  uint8_t data = 0;
+  while (1) {
+    while (!(xQueueReceive(xQueueRead, &(data), (TickType_t)10))) {
+    }
+    printf("Received Data from queue= %c\n", data);
+    vTaskDelay(100);
+  }
+}
+
+/*
+------------------NOT NEEDED FOR THIS ASSIGNMENT-----------------------
+*/
+/*
 
 static void a_verify_adesco_signature() {
   static STATUS_REGISTER_ADESTO a_status_register_flash_memory;
@@ -71,10 +115,7 @@ static void a_task_spi(void *params) {
   }
 }
 
-/*
-------------------NOT NEEDED FOR THIS ASSIGNMENT-----------------------
-*/
-/*
+
 static void a_task_pwm_run(void *params){
   uint16_t dutycycle = 0;
   const uint32_t config_mask = UINT32_C(7);
