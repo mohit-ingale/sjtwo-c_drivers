@@ -1,9 +1,11 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "FreeRTOS.h"
 #include "a_uart.h"
 #include "delay.h"
 #include "queue.h"
+#include "semphr.h"
 #include "sj2_cli.h"
 #include "task.h"
 
@@ -13,19 +15,21 @@ static void a_uart_task_rx_from_queue(void *params);
 void a_uart_rx_isr();
 
 QueueHandle_t xQueueRead;
+SemaphoreHandle_t sem_handle;
 
 int main(void) {
   a_uart_init(UART3, 9600);
-  a_uart_rx_enable(UART3, a_uart_rx_isr);
+  // a_uart_rx_enable(UART3, a_uart_rx_isr);
+  sem_handle = xSemaphoreCreateMutex();
 
-  xQueueRead = xQueueCreate(10, sizeof(uint8_t));
+  xQueueRead = xQueueCreate(16, sizeof(uint8_t));
   if (xQueueRead == NULL) {
     printf("Queue not created\n");
   }
 
-  xTaskCreate(a_uart_task_tx, "uart_task_tx", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  // xTaskCreate(a_uart_task_rx, "uart_task_rx", (8192U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  xTaskCreate(a_uart_task_rx_from_queue, "uart_task_rx_queue", (2048U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_uart_task_tx, "uart_task_tx", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
+  // xTaskCreate(a_uart_task_rx, "uart_task_rx", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
+  // xTaskCreate(a_uart_task_rx_from_queue, "uart_task_rx_queue", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
 
   sj2_cli__init();
   // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
@@ -40,36 +44,71 @@ void a_uart_rx_isr() {
   fprintf(stderr, "Why i got interrupted = %d\n", a_uart_interrupt_which(UART3) >> 1);
   a_uart_rx(UART3, &data);
   xQueueSendFromISR(xQueueRead, &data, &taskgive);
-  if (taskgive) {
-    taskYIELD();
-  }
+  // if (taskgive) {
+  //   taskYIELD();
+  // }
 }
 
 static void a_uart_task_tx(void *params) {
+  int data;
+  char s_data[16] = {0};
+  int i = 0;
   while (1) {
     // printf("Transmitting The character\n");
-    a_uart_tx(UART3, (uint8_t)'a');
-    vTaskDelay(100);
+    data = rand();
+    sprintf(s_data, "%i", data);
+    printf("Data to be transmitted = %s\n", s_data);
+    for (i = 0; i < strlen(s_data); i++) {
+      a_uart_tx(UART3, (uint8_t)s_data[i]);
+      vTaskDelay(10);
+    }
+    a_uart_tx(UART3, 0);
+    for (i = 0; i < strlen(s_data); i++) {
+      s_data[i] = 0;
+    }
+    vTaskDelay(10000);
   }
 }
 
 static void a_uart_task_rx(void *params) {
-  uint8_t data;
+  static char data[16] = {0};
+  char temp_data;
+  static int i = 0;
   while (1) {
     printf("Receving The character\n");
-    a_uart_rx(UART3, &data);
-    printf("Received Data = %c\n", data);
-    vTaskDelay(100);
+    a_uart_rx(UART3, &temp_data);
+    if ((temp_data != 0) && (i < 15)) {
+      data[i++] = temp_data;
+    } else {
+      data[i++] = '\0';
+      i = 0;
+      printf("Received Data = %s\n", data);
+    }
+
+    // vTaskDelay(100);
   }
 }
 
 static void a_uart_task_rx_from_queue(void *params) {
-  uint8_t data = 0;
+  char data[16] = {0};
+  char temp_data;
+  static int i = 0;
   while (1) {
-    while (!(xQueueReceive(xQueueRead, &(data), (TickType_t)10))) {
+    while (!(xQueueReceive(xQueueRead, &(temp_data), (TickType_t)10))) {
     }
-    printf("Received Data from queue= %c\n", data);
-    vTaskDelay(100);
+    // printf("Received Data from queue= %c\n", temp_data);
+    if ((temp_data != 0) && (i < 15)) {
+      data[i++] = temp_data;
+    } else {
+      data[i++] = '\0';
+      printf("Received Data = %s\n", data);
+      for (i = 0; i < 16; i++) {
+        data[i] = 0;
+      }
+      i = 0;
+    }
+    // printf("Received Data from queue= %c\n", temp_data);
+    // vTaskDelay(100);
   }
 }
 
