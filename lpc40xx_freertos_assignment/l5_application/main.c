@@ -37,15 +37,15 @@ int main(void) {
   b. when producer is not sending the value, the receiver is waiting to recevie anything from queue
   c. When producer sends the data to queue, when the reciver task is scheduled to run, it will print the value
       received from the queue
-  d. We can see in output that the receiver is waiting for data in queue, Producer sends the data in the queue then receiver
-      reads the data from the queue
+  d. We can see in output that the receiver is waiting for data in queue, Producer sends the data in the queue then
+receiver reads the data from the queue
 2. When Producer is of higher priority and consumer is of lower priority
   a. producer sends the switch value and receiver is waiting for the data to arrive in queue
     producer sleeps after sending the value, then consumer task reads the data from the queue and prints it.
   b. when producer is not sending the value, the receiver is not receving anything from queue it is waiting for data
     to arrive in the queue
-    The output is similar to equal priority as consumer is of low priority it will wait for data and read data from queue
-    when high priority producer has completed everything
+    The output is similar to equal priority as consumer is of low priority it will wait for data and read data from
+queue when high priority producer has completed everything
 3. When Consumer is of Higher priority than producer
     a. Consumer will be waiting on the queue and will sleep for 10 ticks
     b. When producer will come into ready state and consumer is sleeping the producer will read switch and put in queue
