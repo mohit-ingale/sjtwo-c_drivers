@@ -1,35 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-#include "FreeRTOS.h"
-#include "delay.h"
-#include "my_gpio.h"
-#include "queue.h"
-#include "sj2_cli.h"
-#include "task.h"
-typedef enum { switch__off, switch__on } switch_e;
-
-static void a_producer(void *params);
-static void a_consumer(void *params);
-
-QueueHandle_t xQueueProducer;
-static struct IO_PORT_PIN a_switch_for_queue;
-int main(void) {
-  my_gpio_init(0, 29, IN, &a_switch_for_queue);
-  xQueueProducer = xQueueCreate(1, sizeof(switch_e));
-  if (xQueueProducer == NULL) {
-    printf("Queue not created\n");
-  }
-
-  xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
-
-  sj2_cli__init();
-  // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
-  // puts("Starting RTOS\n");
-  vTaskStartScheduler();
-  return 0;
-}
 
 /*
 1. when both task are of equal priority
@@ -68,6 +36,40 @@ Purpose of block time
 
 
 */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "FreeRTOS.h"
+#include "delay.h"
+#include "my_gpio.h"
+#include "queue.h"
+#include "sj2_cli.h"
+#include "task.h"
+typedef enum { switch__off, switch__on } switch_e;
+
+static void a_producer(void *params);
+static void a_consumer(void *params);
+
+QueueHandle_t xQueueProducer;
+static struct IO_PORT_PIN a_switch_for_queue;
+int main(void) {
+  my_gpio_init(0, 29, IN, &a_switch_for_queue);
+  xQueueProducer = xQueueCreate(1, sizeof(switch_e));
+  if (xQueueProducer == NULL) {
+    printf("Queue not created\n");
+  }
+
+  xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
+
+  sj2_cli__init();
+  // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
+  // puts("Starting RTOS\n");
+  vTaskStartScheduler();
+  return 0;
+}
+
 static void a_producer(void *params) {
   switch_e data;
   while (1) {
