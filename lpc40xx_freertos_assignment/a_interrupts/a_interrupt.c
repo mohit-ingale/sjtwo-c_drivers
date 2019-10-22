@@ -2,10 +2,15 @@
 
 static function__void_f a_gpio_callback[2][32];
 
-static void a_enable_interrupt(A_PERIPHERAL_INTERRUPT *interrupt_config) {
+void a_enable_interrupt(A_PERIPHERAL_INTERRUPT *interrupt_config) {
   lpc_peripheral__enable_interrupt(interrupt_config->peripheral, interrupt_config->peripheral_isr_callback);
-  if (interrupt_config->peripheral == LPC_PERIPHERAL__GPIO) {
+  switch (interrupt_config->peripheral) {
+  case LPC_PERIPHERAL__GPIO:
     NVIC_EnableIRQ(GPIO_IRQn);
+    break;
+  case 5 ... 8:
+    NVIC_EnableIRQ(interrupt_config->peripheral); // enable UART for interrupt
+    break;
   }
 }
 static int isPowerOfTwo(uint32_t n) { return n && (!(n & (n - 1))); }

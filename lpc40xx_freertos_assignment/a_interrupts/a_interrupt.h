@@ -23,5 +23,6 @@ void a_interrupt_create(A_PERIPHERAL_INTERRUPT *interrupt_type, lpc_peripheral_e
                         function__void_f peripheral_isr_callback, IO_PORT_PIN *interrupt_pin, int edge);
 
 void a_interrupt_clear(IO_PORT_PIN *interrupt_pin);
+void a_enable_interrupt(A_PERIPHERAL_INTERRUPT *interrupt_config);
 
 #endif
