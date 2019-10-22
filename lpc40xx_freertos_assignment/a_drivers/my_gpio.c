@@ -35,7 +35,16 @@ void my_gpio_clr(struct IO_PORT_PIN *pin_set) { pin_set->port->CLR |= 1 << (pin_
 
 void my_gpio_toggle(struct IO_PORT_PIN *pin_set) { pin_set->port->PIN ^= 1 << (pin_set->pin_num); }
 
-int my_gpio_get(struct IO_PORT_PIN *pin_get) { return (pin_get->port)->PIN & (1 << (pin_get->pin_num)); }
+int my_gpio_get(struct IO_PORT_PIN *pin_get) {
+  int data;
+  data = (pin_get->port)->PIN & (1 << (pin_get->pin_num));
+  if (data) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+// int my_gpio_get(struct IO_PORT_PIN *pin_get) { return 1; }
 
 void my_gpio_board_led_toggle(void) {
   LPC_GPIO1->PIN ^= (1 << 26) | (1 << 24) | (1 << 18);

@@ -2,34 +2,27 @@
 #include <stdlib.h>
 
 #include "FreeRTOS.h"
-#include "a_uart.h"
 #include "delay.h"
+#include "my_gpio.h"
 #include "queue.h"
-#include "semphr.h"
 #include "sj2_cli.h"
 #include "task.h"
+typedef enum { switch__off, switch__on } switch_e;
 
-static void a_uart_task_tx(void *params);
-static void a_uart_task_rx(void *params);
-static void a_uart_task_rx_from_queue(void *params);
-void a_uart_rx_isr();
+static void a_producer(void *params);
+static void a_consumer(void *params);
 
-QueueHandle_t xQueueRead;
-SemaphoreHandle_t sem_handle;
-
+QueueHandle_t xQueueProducer;
+static struct IO_PORT_PIN a_switch_for_queue;
 int main(void) {
-  a_uart_init(UART3, 9600);
-  // a_uart_rx_enable(UART3, a_uart_rx_isr);
-  sem_handle = xSemaphoreCreateMutex();
-
-  xQueueRead = xQueueCreate(16, sizeof(uint8_t));
-  if (xQueueRead == NULL) {
+  my_gpio_init(0, 29, IN, &a_switch_for_queue);
+  xQueueProducer = xQueueCreate(1, sizeof(switch_e));
+  if (xQueueProducer == NULL) {
     printf("Queue not created\n");
   }
 
-  xTaskCreate(a_uart_task_tx, "uart_task_tx", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
-  // xTaskCreate(a_uart_task_rx, "uart_task_rx", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
-  // xTaskCreate(a_uart_task_rx_from_queue, "uart_task_rx_queue", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
+  xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
 
   sj2_cli__init();
   // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
@@ -38,6 +31,69 @@ int main(void) {
   return 0;
 }
 
+/*
+1. when both task are of equal priority
+  a. producer sends the switch value and receiver receivers the value and prints it.
+  b. when producer is not sending the value, the receiver is waiting to to receving anything from queue
+  c. When producer sends the data to queue, when the reciver task is scheduled to run, it will print the value
+      received from the queue
+2. When Producer is of higher priority and consumer is of lower priority
+  a. producer sends the switch value and receiver receivers is waiting for the data to arrive in queue
+    producer sleeps after sending the value, then consumer task reads the data from the queue and prints it.
+  b. when producer is not sending the value, the receiver is not receving anything from queue it is waiting for data
+    to arrive in the queue
+      
+
+
+
+
+
+3. When Consumer is of Higher priority than producer
+    a. Consumer will be waiting on the queue and will sleep for 10 ticks
+    b. When producer will come into ready state and consumer is sleeping the producer will read data and put in queue
+    c. Immediately context switch will happen and then consumer task will wake up and read data from queue and print the
+      output
+    d. Then again consumer will sleep waiting for data on queue and producer will complete its remaining task of
+      printing data is sent
+
+
+
+Additional Question
+when wait ticks is equal to 0 in receive queue
+  a. Consumer will keep on waiting on the queue doing busy looping and consume cpu indefinitetly
+  b. Producer will never get cpu to execute the code and send data to the queue, hence receiver would never get data
+
+Purpose of block time
+  a.
+
+*/
+static void a_producer(void *params) {
+  switch_e data;
+  while (1) {
+    data = (switch_e)my_gpio_get(&a_switch_for_queue);
+    // printf("Data Sent Before = %i\n", data);
+    xQueueSend(xQueueProducer, (void *)&data, 0);
+    // printf("Data Sent After = %i\n", data);
+    vTaskDelay(1000);
+  }
+}
+
+static void a_consumer(void *params) {
+  switch_e data;
+  while (1) {
+    // while (xQueueReceive(xQueueProducer, &data, 10) != pdTRUE)
+    //   ;
+    // printf("Data receive before = %i\n", data);
+    xQueueReceive(xQueueProducer, &data, portMAX_DELAY);
+    // printf("Data receive after = %i\n", data);
+    // vTaskDelay(1000);
+  }
+}
+
+/*
+------------------NOT NEEDED FOR THIS ASSIGNMENT-----------------------
+*/
+/*
 void a_uart_rx_isr() {
   uint8_t data;
   int taskgive;
@@ -69,6 +125,8 @@ static void a_uart_task_tx(void *params) {
     vTaskDelay(1000);
   }
 }
+
+
 
 static void a_uart_task_rx(void *params) {
   static char data[16] = {0};
@@ -103,10 +161,7 @@ static void a_uart_task_rx_from_queue(void *params) {
   }
 }
 
-/*
-------------------NOT NEEDED FOR THIS ASSIGNMENT-----------------------
-*/
-/*
+
 
 static void a_verify_adesco_signature() {
   static STATUS_REGISTER_ADESTO a_status_register_flash_memory;
