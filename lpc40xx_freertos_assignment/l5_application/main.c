@@ -60,13 +60,13 @@ static void a_uart_task_tx(void *params) {
     printf("Data to be transmitted = %s\n", s_data);
     for (i = 0; i < strlen(s_data); i++) {
       a_uart_tx(UART3, (uint8_t)s_data[i]);
-      vTaskDelay(10);
+      // vTaskDelay(10);
     }
-    a_uart_tx(UART3, 0);
+    a_uart_tx(UART3, '\0');
     for (i = 0; i < strlen(s_data); i++) {
       s_data[i] = 0;
     }
-    vTaskDelay(10000);
+    vTaskDelay(1000);
   }
 }
 
@@ -75,9 +75,9 @@ static void a_uart_task_rx(void *params) {
   char temp_data;
   static int i = 0;
   while (1) {
-    printf("Receving The character\n");
+    // printf("Receving The character\n");
     a_uart_rx(UART3, &temp_data);
-    if ((temp_data != 0) && (i < 15)) {
+    if ((temp_data != '\0') && (i < 15)) {
       data[i++] = temp_data;
     } else {
       data[i++] = '\0';
@@ -96,19 +96,10 @@ static void a_uart_task_rx_from_queue(void *params) {
   while (1) {
     while (!(xQueueReceive(xQueueRead, &(temp_data), (TickType_t)10))) {
     }
+    printf("Received Data from queue= %c\n", temp_data);
+
     // printf("Received Data from queue= %c\n", temp_data);
-    if ((temp_data != 0) && (i < 15)) {
-      data[i++] = temp_data;
-    } else {
-      data[i++] = '\0';
-      printf("Received Data = %s\n", data);
-      for (i = 0; i < 16; i++) {
-        data[i] = 0;
-      }
-      i = 0;
-    }
-    // printf("Received Data from queue= %c\n", temp_data);
-    // vTaskDelay(100);
+    vTaskDelay(100);
   }
 }
 
