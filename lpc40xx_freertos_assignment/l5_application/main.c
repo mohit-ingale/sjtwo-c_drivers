@@ -1,67 +1,45 @@
 
-/*
-1. when both task are of equal priority
-  a. producer sends the switch value and receiver receivers the value and prints it.
-  b. when producer is not sending the value, the receiver is waiting to recevie anything from queue
-  c. When producer sends the data to queue, when the reciver task is scheduled to run, it will print the value
-      received from the queue
-  d. We can see in output that the receiver is waiting for data in queue, Producer sends the data in the queue then
-receiver reads the data from the queue
-2. When Producer is of higher priority and consumer is of lower priority
-  a. producer sends the switch value and receiver is waiting for the data to arrive in queue
-    producer sleeps after sending the value, then consumer task reads the data from the queue and prints it.
-  b. when producer is not sending the value, the receiver is not receving anything from queue it is waiting for data
-    to arrive in the queue
-    The output is similar to equal priority as consumer is of low priority it will wait for data and read data from
-queue when high priority producer has completed everything
-3. When Consumer is of Higher priority than producer
-    a. Consumer will be waiting on the queue and will sleep for 10 ticks
-    b. When producer will come into ready state and consumer is sleeping the producer will read switch and put in queue
-    c. Immediately context switch will happen and then consumer task will wake up and read data from queue and print the
-      output
-    d. Then again consumer will sleep waiting for data on queue and producer will complete its remaining task of
-      printing data is sent
-
-
-
-Additional Question
-when wait ticks is equal to 0 in receive queue
-when consumer is of high priority
-  a. Consumer will keep on waiting on the queue doing busy looping and consume cpu indefinitetly
-  b. Producer will never get cpu to execute the code and send data to the queue, hence receiver would never get data
-
-Purpose of block time
-  a. If data is not available in queue the task would sleep and wait till either timeout occurs or data is available
-     in the queue
-
-
-*/
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "FreeRTOS.h"
+#include "acceleration.h"
 #include "delay.h"
+#include "event_groups.h"
+#include "ff.h"
 #include "my_gpio.h"
 #include "queue.h"
 #include "sj2_cli.h"
 #include "task.h"
-typedef enum { switch__off, switch__on } switch_e;
+#include <string.h>
+
+#define BIT_0 (1 << 0)
+#define BIT_1 (1 << 1)
 
 static void a_producer(void *params);
 static void a_consumer(void *params);
+static void watchdog_task(void *params);
 
-QueueHandle_t xQueueProducer;
-static struct IO_PORT_PIN a_switch_for_queue;
+bool a_file_open(char *filename, FIL *file);
+void a_file_close(FIL *file);
+bool a_file_write(FIL *file, char *string);
+
+QueueHandle_t xQueueSensor;
+
+EventGroupHandle_t watch_dog;
+
 int main(void) {
-  my_gpio_init(0, 29, IN, &a_switch_for_queue);
-  xQueueProducer = xQueueCreate(1, sizeof(switch_e));
-  if (xQueueProducer == NULL) {
+  xQueueSensor = xQueueCreate(20, sizeof(acceleration__axis_data_s));
+  if (xQueueSensor == NULL) {
     printf("Queue not created\n");
   }
 
-  xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
-  xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_LOW, NULL);
+  watch_dog = xEventGroupCreate();
+
+  xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
+  xTaskCreate(watchdog_task, "watchdog_task", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
 
   sj2_cli__init();
   // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
@@ -71,24 +49,115 @@ int main(void) {
 }
 
 static void a_producer(void *params) {
-  switch_e data;
+  static int i = 0;
+  static acceleration__axis_data_s avg_data = {0};
+  acceleration__axis_data_s data;
+  acceleration__init();
   while (1) {
-    data = (switch_e)my_gpio_get(&a_switch_for_queue);
-    printf("Data Sent Before = %i\n", data);
-    xQueueSend(xQueueProducer, (void *)&data, 0);
-    printf("Data Sent After = %i\n", data);
-    vTaskDelay(1000);
+    data = acceleration__get_data();
+    i++;
+    if (i <= 100) {
+      avg_data.x += data.x;
+      avg_data.y += data.y;
+      avg_data.z += data.z;
+    } else {
+      avg_data.x /= 100;
+      avg_data.y /= 100;
+      avg_data.z /= 100;
+      while (!xQueueSend(xQueueSensor, &avg_data, portMAX_DELAY))
+        ;
+      xEventGroupSetBits(watch_dog, BIT_0);
+      vTaskDelay(1);
+
+      avg_data.x = 0;
+      avg_data.y = 0;
+      avg_data.z = 0;
+      i = 0;
+    }
+
+    vTaskDelay(100);
   }
 }
 
 static void a_consumer(void *params) {
-  switch_e data;
+  acceleration__axis_data_s avg_data;
+  TickType_t myticks = xTaskGetTickCount();
+  FIL file;
+  const char *filename = "sensor.txt";
+  a_file_open(filename, &file);
   while (1) {
-    // while (xQueueReceive(xQueueProducer, &data, 10) != pdTRUE)
+    // while (xQueueReceive(xQueueSensor, &avg_data, 10) != pdTRUE)
     //   ;
-    printf("Data receive before = %i\n", data);
-    xQueueReceive(xQueueProducer, &data, portMAX_DELAY);
-    printf("Data receive after = %i\n", data);
-    // vTaskDelay(1000);
+    if (xQueueReceive(xQueueSensor, &avg_data, 10) == pdTRUE) {
+      char string[64];
+      // printf("time = %i\n", xTaskGetTickCount());
+      sprintf(string, "%i,%i,%i,%i\n", xTaskGetTickCount(), avg_data.x, avg_data.y, avg_data.z);
+      a_file_write(&file, string);
+      // printf("Data_x = %d, Data_y= %d, Data_z= %d\n", avg_data.x, avg_data.y, avg_data.z);
+      if (xTaskGetTickCount() - myticks > 100000) {
+        a_file_close(&file);
+        if (!a_file_open(filename, &file)) {
+          printf("File not able to open\n");
+        }
+        myticks = xTaskGetTickCount();
+      }
+
+      // write_file_using_fatfs_pi(avg_data);
+    }
+    xEventGroupSetBits(watch_dog, BIT_1);
+    vTaskDelay(1);
+  }
+}
+
+bool a_file_open(char *filename, FIL *file) {
+
+  FRESULT result = f_open(file, filename, (FA_WRITE | FA_OPEN_APPEND));
+  if (FR_OK == result) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void a_file_close(FIL *file) { f_close(file); }
+
+bool a_file_write(FIL *file, char *string) {
+  UINT bytes_written = 0;
+  if (FR_OK == f_write(file, string, strlen(string), &bytes_written)) {
+  } else {
+    printf("ERROR: Failed to write data to file\n");
+  }
+  f_sync(file);
+}
+
+static void watchdog_task(void *params) {
+  EventBits_t uxBits;
+  FIL file;
+  const char *filename = "log.txt";
+
+  while (1) {
+    vTaskDelay(10000);
+    uxBits = xEventGroupWaitBits(watch_dog,     /* The event group being tested. */
+                                 BIT_0 | BIT_1, /* The bits within the event group to wait for. */
+                                 pdTRUE,        /* BIT_0 & BIT_4 should be cleared before returning. */
+                                 pdTRUE,        /* Don't wait for both bits, either bit will do. */
+                                 1000);
+    if ((uxBits & (BIT_0 | BIT_1)) == (BIT_0 | BIT_1)) {
+    } else if ((uxBits & BIT_0) != 0) {
+      a_file_open(filename, &file);
+      a_file_write(&file, "Producer Failed\n");
+      printf("one bits set\n");
+      a_file_close(&file);
+    } else if ((uxBits & BIT_1) != 0) {
+      a_file_open(filename, &file);
+      a_file_write(&file, "Consumer Failed\n");
+      printf("one bits set\n");
+      a_file_close(&file);
+    } else {
+      a_file_open(filename, &file);
+      a_file_write(&file, "Producer & Consumer Failed\n");
+      printf("none bits set\n");
+      a_file_close(&file);
+    }
   }
 }
