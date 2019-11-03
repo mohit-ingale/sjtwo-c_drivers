@@ -18,7 +18,8 @@
         "__locale": "c",
         "sl_string.h": "c",
         "ff.h": "c",
-        "filesystem": "c"
+        "filesystem": "c",
+        "my_gpio.h": "c"
     },
     "python.pythonPath": "/usr/bin/python3"
 }

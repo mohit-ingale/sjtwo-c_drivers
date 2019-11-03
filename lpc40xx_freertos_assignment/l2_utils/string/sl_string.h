@@ -207,6 +207,8 @@ sl_string_size_t sl_string__erase_special_chars(sl_string_t string);
  */
 bool sl_string__erase_int(sl_string_t string, int *erased_int);
 
+bool sl_string__erase_hex(sl_string_t string, int *erased_hex);
+
 bool sl_string__trim_end(sl_string_t string, const char *chars_to_trim);
 bool sl_string__trim_start(sl_string_t string, const char *chars_to_trim);
 

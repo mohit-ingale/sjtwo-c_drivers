@@ -75,9 +75,10 @@ static void cli__i2c_write(sl_string_t command_params, app_cli__print_string_fun
     sl_string__erase_first_word(command_params, ' ');
 
     // Store one or more write <value> parameters to buffer as specified by the user
+
     int value_to_write = 0;
     size_t count = 0;
-    while (sl_string__erase_int(command_params, &value_to_write)) {
+    while (sl_string__erase_hex(command_params, &value_to_write)) {
       buffer[count] = (uint8_t)value_to_write;
       ++count;
     }

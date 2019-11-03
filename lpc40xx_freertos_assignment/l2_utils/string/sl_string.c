@@ -681,6 +681,7 @@ bool sl_string__erase_int(sl_string_t string, int *erased_int) {
   bool parsed = false;
 
   const char *c = string;
+
   while (('\0' != *c) && (0U == isdigit((int)*c))) {
     ++c; // Skip chars until a digit
   }
@@ -692,6 +693,32 @@ bool sl_string__erase_int(sl_string_t string, int *erased_int) {
 
   while (('\0' != *c) && (0U != isdigit((int)*c))) {
     ++c; // Skip the digits we processed in atoi() above
+  }
+
+  // Erase the integer we processed above
+  const sl_string_size_t chars_to_erase = (sl_string_size_t)sl_utils__pointer_distance(c, string);
+  (void)sl_string__erase_first(string, chars_to_erase);
+
+  return parsed;
+}
+
+bool sl_string__erase_hex(sl_string_t string, int *erased_hex) {
+  bool parsed = false;
+
+  const char *c = string;
+
+  while (('\0' != *c) && (0U == isdigit((int)*c))) {
+    ++c; // Skip chars until a digit
+  }
+
+  if (*c == '0' && (*(c + 1) == 'x' || *(c + 1) == 'X')) {
+    if (sl_string__scanf((sl_string_t *)c, "%x", erased_hex) == 1) {
+      parsed = true;
+    }
+    c += 2;
+    while (('\0' != *c) && (0U != isdigit((int)*c))) {
+      ++c; // Skip the digits we processed in sscanf() above
+    }
   }
 
   // Erase the integer we processed above
