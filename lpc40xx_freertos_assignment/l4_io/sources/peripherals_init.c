@@ -12,6 +12,7 @@
 static void peripherals_init__startup_sequence(void);
 static void peripherals_init__mount_sd_card(void);
 static void peripherals_init__uart0_init(void);
+static void peripherals_init__uart3_init(void);
 static void peripherals_init__i2c_init(void);
 
 void peripherals_init(void) {
@@ -23,7 +24,8 @@ void peripherals_init(void) {
   peripherals_init__mount_sd_card();
 
   // UART initialization is required in order to use <stdio.h> puts, printf() etc; @see system_calls.c
-  peripherals_init__uart0_init();
+  peripherals_init__uart3_init();
+  // peripherals_init__uart0_init();
 
   // UART is initialized, so we can now start using printf()
   const char *line = "--------------------------------------------------------------------------------";
@@ -56,6 +58,31 @@ static void peripherals_init__uart0_init(void) {
 
   // Note: PIN functions are initialized by board_io__initialize() for P0.2(Tx) and P0.3(Rx)
   uart__init(UART__0, clock__get_peripheral_clock_hz(), 115200);
+
+  // You can use xQueueCreate() that uses malloc() as it is an easier API to work with, however, we opt to
+  // use xQueueCreateStatic() to provide reference on how to create RTOS queue without dynamic memory allocation
+
+  // Memory for the queue data structure
+  static StaticQueue_t rxq_struct;
+  static StaticQueue_t txq_struct;
+
+  // Memory where the queue actually stores the data
+  static uint8_t rxq_storage[32];
+  static uint8_t txq_storage[128];
+
+  // Make UART more efficient by backing it with RTOS queues (optional but highly recommended with RTOS)
+  QueueHandle_t rxq_handle = xQueueCreateStatic(sizeof(rxq_storage), sizeof(char), rxq_storage, &rxq_struct);
+  QueueHandle_t txq_handle = xQueueCreateStatic(sizeof(txq_storage), sizeof(char), txq_storage, &txq_struct);
+
+  uart__enable_queues(UART__0, txq_handle, rxq_handle);
+}
+
+static void peripherals_init__uart3_init(void) {
+  // Do not do any bufferring for standard input otherwise getchar(), scanf() may not work
+  setvbuf(stdin, 0, _IONBF, 0);
+
+  // Note: PIN functions are initialized by board_io__initialize() for P0.2(Tx) and P0.3(Rx)
+  uart__init(UART__3, clock__get_peripheral_clock_hz(), 115200);
 
   // You can use xQueueCreate() that uses malloc() as it is an easier API to work with, however, we opt to
   // use xQueueCreateStatic() to provide reference on how to create RTOS queue without dynamic memory allocation

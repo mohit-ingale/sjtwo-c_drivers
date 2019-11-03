@@ -4,6 +4,8 @@
 #include <stdlib.h>
 
 #include "FreeRTOS.h"
+#include "a_power.h"
+
 #include "acceleration.h"
 #include "delay.h"
 #include "event_groups.h"
@@ -29,7 +31,10 @@ QueueHandle_t xQueueSensor;
 
 EventGroupHandle_t watch_dog;
 
+static void a_read_current_consumption(void *params);
+
 int main(void) {
+  get_current_board_init();
   xQueueSensor = xQueueCreate(20, sizeof(acceleration__axis_data_s));
   if (xQueueSensor == NULL) {
     printf("Queue not created\n");
@@ -37,15 +42,26 @@ int main(void) {
 
   watch_dog = xEventGroupCreate();
 
-  xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
-  xTaskCreate(watchdog_task, "watchdog_task", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  // xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
+  // xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
+  // xTaskCreate(watchdog_task, "watchdog_task", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
 
-  sj2_cli__init();
+  xTaskCreate(a_read_current_consumption, "a_read_current_consumption", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM,
+              NULL);
+  // sj2_cli__init();
   // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
   // puts("Starting RTOS\n");
   vTaskStartScheduler();
   return 0;
+}
+
+static void a_read_current_consumption(void *params) {
+  uint16_t current_consumed;
+  while (1) {
+    current_consumed = get_current_board_raw();
+    printf("Current Consumed = %i\n", current_consumed);
+    vTaskDelay(500);
+  }
 }
 
 static void a_producer(void *params) {

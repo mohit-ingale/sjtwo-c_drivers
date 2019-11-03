@@ -35,8 +35,20 @@ static gpio_s board_io__led0, board_io__led1, board_io__led2, board_io__led3;
 void board_io__initialize(void) {
   // Note: return type of gpio__construct_with_function() because we do not need GPIO instance after its configuration
 
-  gpio__construct_with_function(GPIO__PORT_0, 2, GPIO__FUNCTION_1); // P0.2 - Uart-0 Tx
-  gpio__construct_with_function(GPIO__PORT_0, 3, GPIO__FUNCTION_1); // P0.3 - Uart-0 Rx
+  gpio__construct_with_function(GPIO__PORT_4, 28, GPIO__FUNCTION_2); // P0.2 - Uart-0 Tx
+  gpio__construct_with_function(GPIO__PORT_4, 29, GPIO__FUNCTION_2); // P0.3 - Uart-0 Rx
+
+  // LPC_IOCON->P4_28 &= ~(0b111); // tx
+  // // LPC_IOCON->P4_29 &= ~(0b111); // rx
+
+  // LPC_IOCON->P4_28 |= 0b010; // tx
+  // // LPC_IOCON->P4_29 |= 0b010; // rx
+
+  // // LPC_IOCON->P0_0 &= ~(0b111); // tx
+  // LPC_IOCON->P0_1 &= ~(0b111); // rx
+
+  // // LPC_IOCON->P0_0 |= 0b010; // tx
+  // LPC_IOCON->P0_1 |= 0b010; // rx
 
   // SPI bus 2 (SSP2)
   gpio__construct_with_function(GPIO__PORT_1, 0, GPIO__FUNCTION_4); // P1.0 - SCK2

@@ -24,7 +24,7 @@ typedef enum {
 } file_id_e;
 
 /// printf(), scanf() for standard output uses this UART
-static const uart_e system_calls__uart_type = UART__0;
+static const uart_e system_calls__uart_type = UART__3;
 
 /// Uses uart__put() which deposits data into a queue and returns immediately
 static void system_calls__queued_put(const char *ptr, int len) {
