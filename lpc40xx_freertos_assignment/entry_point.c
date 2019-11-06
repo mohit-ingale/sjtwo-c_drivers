@@ -23,9 +23,9 @@ void entry_point(void) {
   peripherals_init();
   entry_point__handle_crash_report();
 
-  if (!sensors__init()) {
-    printf("\n%s(): WARNING: Sensor errors on this board\n", __FUNCTION__);
-  }
+  // if (!sensors__init()) {
+  //   printf("\n%s(): WARNING: Sensor errors on this board\n", __FUNCTION__);
+  // }
 
   printf("\n%s(): Entering main()\n", __FUNCTION__);
   main();

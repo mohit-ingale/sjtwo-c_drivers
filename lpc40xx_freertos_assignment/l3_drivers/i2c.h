@@ -67,3 +67,5 @@ bool i2c__write_single(i2c_e i2c_number, uint8_t slave_address, uint8_t slave_me
  */
 bool i2c__write_slave_data(i2c_e i2c_number, uint8_t slave_address, uint8_t starting_slave_memory_address,
                            const uint8_t *bytes_to_write, uint32_t number_of_bytes);
+
+void i2c_slave_initialize(i2c_e i2c_number);
