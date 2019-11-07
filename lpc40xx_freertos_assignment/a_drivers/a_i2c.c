@@ -5,7 +5,9 @@ uint8_t register_addre = 0x00;
 
 uint8_t value_at_memory(uint8_t memory_address) { return a_memory_read(memory_address); }
 
-void value_to_memory(uint8_t memory_address, uint8_t value) { a_memory_write(memory_address, value); }
+uint8_t value_to_memory(uint8_t memory_address, uint8_t value) { return a_memory_write(memory_address, value); }
+
+void a_set_error_in_status_reg(uint8_t status_value) { a_write_status_register(status_value); }
 
 void a_i2c_0_isr() { a_i2c_state(LPC_I2C0_BASE); }
 void a_i2c_1_isr() { a_i2c_state(LPC_I2C1_BASE); }
@@ -18,67 +20,111 @@ void a_i2c_state(LPC_I2C_TypeDef *a_i2c_device_run) {
   switch (state) {
   case 0x60: // Slave Address Found
     previous_state = state;
+    a_i2c_send_ack_for_next_data(a_i2c_device_run);
     break;
   case 0x80: // Data Received
     if (previous_state == 0x60) {
       register_addre = a_i2c_device_run->DAT;
-      fprintf(stderr, "Register = %x\n", register_addre);
+      if (a_memory_address_validate(register_addre)) {
+        a_i2c_send_ack_for_next_data(a_i2c_device_run);
+      } else {
+        a_i2c_send_no_ack_for_next_data(a_i2c_device_run);
+      }
     } else {
-      value_to_memory(register_addre, a_i2c_device_run->DAT);
-      register_addre = register_addre + 1;
-      fprintf(stderr, "Incremented Register = %x\n", register_addre);
+      if (value_to_memory(register_addre, a_i2c_device_run->DAT)) {
+        if ((register_addre == 0x80) || (register_addre == 0x81) || (register_addre == 0x82)) {
+
+        } else {
+          register_addre = register_addre + 1;
+        }
+        a_i2c_send_ack_for_next_data(a_i2c_device_run);
+      } else {
+        a_i2c_send_no_ack_for_next_data(a_i2c_device_run);
+      }
     }
     previous_state = 0x80;
+
+    break;
+  case 0x88:
+    previous_state = 0x88;
+    a_i2c_send_ack_for_next_data(a_i2c_device_run);
     break;
   case 0xA0:
     previous_state = 0xA0;
+    a_i2c_send_ack_for_next_data(a_i2c_device_run);
     break;
-  case 0xA8:
+  case 0xA8: {
+    uint8_t data;
     if (previous_state == 0xA0) {
-      uint8_t data = value_at_memory(register_addre++);
-      a_i2c_device_run->DAT = data;
-      fprintf(stderr, "Data Sent\n");
+      if (a_memory_address_validate(register_addre)) {
+        data = value_at_memory(register_addre);
+        if ((register_addre == 0x80) || (register_addre == 0x81) || (register_addre == 0x82)) {
+
+        } else {
+          register_addre = register_addre + 1;
+        }
+        a_i2c_device_run->DAT = data;
+      } else {
+        data = -1;
+      }
+      // fprintf(stderr, "Data Sent\n");
     } else {
     }
     previous_state = 0XA8;
-    break;
-  case 0xB8:
-    if (previous_state == 0xA8 | previous_state == 0xB8) {
-      a_i2c_device_run->DAT = value_at_memory(register_addre++);
-      fprintf(stderr, "Incremented Data Sent\n");
+    if (data != -1) {
+      a_i2c_send_ack_for_next_data(a_i2c_device_run);
+    } else {
+      a_i2c_send_no_ack_for_next_data(a_i2c_device_run);
+    }
+  } break;
+  case 0xB8: {
+    int data;
+    if ((previous_state == 0xA8) || (previous_state == 0xB8)) {
+      if (a_memory_address_validate(register_addre)) {
+        data = value_at_memory(register_addre++);
+        a_i2c_device_run->DAT = data;
+      } else {
+        data = -1;
+      }
+      // fprintf(stderr, "Incremented Data Sent\n");
     }
     previous_state = 0xB8;
-    break;
+    if (data != -1) {
+      a_i2c_send_ack_for_next_data(a_i2c_device_run);
+    } else {
+      a_i2c_send_no_ack_for_next_data(a_i2c_device_run);
+    }
+  } break;
   case 0xC0:
-    fprintf(stderr, "Data Recevied by master no ACK STOP\n");
+    // fprintf(stderr, "Data Recevied by master no ACK STOP\n");
     previous_state = 0xC0;
+    a_i2c_send_ack_for_next_data(a_i2c_device_run);
     break;
   case 0xC8:
-    fprintf(stderr, "Final Data Recevied by master ACK STOP\n");
+    // fprintf(stderr, "Final Data Recevied by master ACK STOP\n");
     previous_state = 0XC8;
+    a_i2c_send_ack_for_next_data(a_i2c_device_run);
     break;
   default:
     break;
   }
-  a_i2c_2_clear_si_flag(a_i2c_device_run);
-  a_i2c_2_send_ack_for_next_data(a_i2c_device_run);
+  a_i2c_clear_si_flag(a_i2c_device_run);
 }
 
-void a_i2c_2_clear_si_flag(LPC_I2C_TypeDef *a_i2c_device_run) { a_i2c_device_run->CONCLR = (1 << 3); }
+void a_i2c_clear_si_flag(LPC_I2C_TypeDef *a_i2c_device_run) { a_i2c_device_run->CONCLR = (1 << 3); }
 
-void a_i2c_2_send_ack_for_next_data(LPC_I2C_TypeDef *a_i2c_device_run) { a_i2c_device_run->CONSET = 0x44; }
+void a_i2c_send_ack_for_next_data(LPC_I2C_TypeDef *a_i2c_device_run) { a_i2c_device_run->CONSET = 0x44; }
+void a_i2c_send_no_ack_for_next_data(LPC_I2C_TypeDef *a_i2c_device_run) { a_i2c_device_run->CONCLR = 0x04; }
 
 void temp() { LPC_I2C2->CONSET |= 0x44; }
 
 void a_i2c_slave_init(A_I2C_BUS a_which_i2c_bus) {
   const function__void_f isrs[] = {a_i2c_0_isr, a_i2c_1_isr, a_i2c_2_isr};
-  led0 = board_io__get_led0();
   A_I2C_DEVICE a_i2c_device_run;
   __a_i2c__init_handle(a_which_i2c_bus, 0, &a_i2c_device_run);
   __a_i2c_enable(&a_i2c_device_run);
   a_i2c_device_run.lpc_i2c->CONCLR = 0x6C;
   __a_i2c_set_slave_address(&a_i2c_device_run, 0x22);
-  printf("Set Slave Address = %x\n", a_i2c_device_run.lpc_i2c->ADR0);
   lpc_peripheral__enable_interrupt(a_i2c_device_run.i2c_peripheral, isrs[a_i2c_device_run.which_i2c_bus]);
 }
 

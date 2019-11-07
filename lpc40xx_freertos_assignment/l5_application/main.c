@@ -19,7 +19,7 @@ int main(void) {
   // if(my_memory==NULL){
   //   printf("Error Allocating Memory\n");
   // }
-  a_i2c_slave_init(a_i2c_bus_1);
+  a_i2c_slave_init(a_i2c_bus_2);
 
   // xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
   // xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
