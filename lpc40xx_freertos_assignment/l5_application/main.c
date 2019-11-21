@@ -5,6 +5,7 @@
 
 #include "a_i2c.h"
 #include "a_memory.h"
+#include "acceleration.h"
 #include "delay.h"
 #include "sj2_cli.h"
 #include "task.h"
@@ -19,11 +20,12 @@ int main(void) {
   // if(my_memory==NULL){
   //   printf("Error Allocating Memory\n");
   // }
-  a_i2c_slave_init(a_i2c_bus_2);
+  a_acclerometer_signal = xSemaphoreCreateBinary();
+  a_i2c_slave_init(a_i2c_bus_1);
 
   // xTaskCreate(a_producer, "a_producer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
   // xTaskCreate(a_consumer, "a_consumer", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
-  // xTaskCreate(watchdog_task, "watchdog_task", (4096U / sizeof(void *)), NULL, PRIORITY_HIGH, NULL);
+  xTaskCreate(a_i2c_slave_task, "a_i2c_slave_task", (4096U / sizeof(void *)), NULL, PRIORITY_MEDIUM, NULL);
 
   sj2_cli__init();
   // UNUSED(uart_task); // uart_task is un-used in if we are doing cli init()
@@ -33,6 +35,10 @@ int main(void) {
 }
 
 static void a_i2c_slave_task(void *params) {
-  while (1)
-    ;
+  while (1) {
+    if (xSemaphoreTake(a_acclerometer_signal, portMAX_DELAY)) {
+      printf("Accl Init\n");
+      acceleration__init();
+    }
+  }
 }

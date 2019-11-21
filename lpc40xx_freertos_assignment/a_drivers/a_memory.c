@@ -1,13 +1,11 @@
 #include "a_memory.h"
 #include <stdio.h>
 
+// Acceleration 0x83
 // GPIO is at 0x82
 // Control 0x81
 // Status 0x80
 
-#define MEMORY_SIZE_MAX 100
-
-static uint8_t my_memory[MEMORY_SIZE_MAX] = {0};
 /**
  *
  *
@@ -16,7 +14,7 @@ static uint8_t my_memory[MEMORY_SIZE_MAX] = {0};
 typedef struct control_memory_reg {
   uint8_t gpio_control_board : 1;
   uint8_t memory_control : 1;
-  uint8_t : 1;
+  uint8_t acceleration_control : 1;
   uint8_t : 1;
   uint8_t : 1;
   uint8_t : 1;
@@ -28,7 +26,7 @@ typedef struct control_memory_reg {
 typedef struct status_memory_reg {
   uint8_t gpio_status_board : 1;
   uint8_t is_memory_address_invalid : 1;
-  uint8_t : 1;
+  uint8_t acceleration_status : 1;
   uint8_t : 1;
   uint8_t : 1;
   uint8_t : 1;
@@ -40,6 +38,9 @@ typedef struct status_memory_reg {
 static status_memory_reg status_reg = {0};
 static control_memory_reg control_reg = {0};
 static gpio_s led0;
+
+#define MEMORY_SIZE_MAX 100
+static uint8_t my_memory[MEMORY_SIZE_MAX] = {0};
 
 void a_control_register_changed_take_action(uint8_t data);
 uint8_t a_slave_gpio_action(uint8_t data, int is_write);
@@ -60,6 +61,10 @@ void a_control_register_changed_take_action(uint8_t data) {
   }
   if (a_read_control_register() & a_slave_memory_control) {
   }
+  if (a_read_control_register() & a_slave_acceleration_control) {
+    fprintf(stderr, "Acceleration_sensor initilialized\n");
+    xSemaphoreGiveFromISR(a_acclerometer_signal, NULL);
+  }
 }
 
 uint8_t a_slave_gpio_action(uint8_t data, int is_write) {
@@ -76,6 +81,18 @@ uint8_t a_slave_gpio_action(uint8_t data, int is_write) {
     fprintf(stderr, "gpio get\n");
     return gpio__get(led0);
   }
+}
+
+uint8_t a_acclerometer_action(uint8_t which_register) {
+  // acceleration__axis_data_s accelerator_data = acceleration__get_data();
+  // my_memory[MEMORY_SIZE_MAX - 6] = (accelerator_data.x & 0xff);
+  // my_memory[MEMORY_SIZE_MAX - 5] = ((accelerator_data.x >> 8) & 0xff);
+  // my_memory[MEMORY_SIZE_MAX - 4] = (accelerator_data.y & 0xff);
+  // my_memory[MEMORY_SIZE_MAX - 3] = ((accelerator_data.y >> 8) & 0xff);
+  // my_memory[MEMORY_SIZE_MAX - 2] = (accelerator_data.z & 0xff);
+  // my_memory[MEMORY_SIZE_MAX - 1] = ((accelerator_data.z >> 8) & 0xff);
+  // return my_memory[which_register];
+  return 1;
 }
 
 uint8_t a_slave_memory_action(uint8_t memory_address, uint8_t data, uint8_t is_write) {
@@ -108,6 +125,9 @@ uint8_t a_data_received_take_action(uint8_t memory_address, uint8_t data, uint8_
     }
   } else if (memory_address == 0x82 && (a_read_control_register() & a_slave_gpio_control)) {
     return a_slave_gpio_action(data, is_write);
+    // } else if ((memory_address >= MEMORY_SIZE_MAX - 6) && (a_read_control_register() & a_slave_acceleration_control))
+    // {
+    //   return a_acclerometer_action(memory_address);
   } else if (a_read_control_register() & a_slave_memory_control) {
     return a_slave_memory_action(memory_address, data, is_write);
   } else {
@@ -119,6 +139,7 @@ uint8_t a_read_status_register() {
   uint8_t local_status = 0;
   local_status |= (status_reg.gpio_status_board << 0);
   local_status |= (status_reg.is_memory_address_invalid << 1);
+  local_status |= (status_reg.acceleration_status << 2);
   return local_status;
 }
 
@@ -126,6 +147,7 @@ uint8_t a_read_control_register() {
   uint8_t local_control_reg = 0;
   local_control_reg |= (control_reg.gpio_control_board << 0);
   local_control_reg |= (control_reg.memory_control << 1);
+  local_control_reg |= (control_reg.acceleration_control << 2);
   return local_control_reg;
 }
 
@@ -133,12 +155,16 @@ void a_write_status_register(uint8_t status_value) {
   (status_value & a_slave_gpio_status) ? (status_reg.gpio_status_board = 1) : (status_reg.gpio_status_board = 0);
   (status_value & a_slave_memory_valid_status) ? (status_reg.is_memory_address_invalid = 1)
                                                : (status_reg.is_memory_address_invalid = 0);
+  (status_value & a_slave_acclerometer_valid_status) ? (status_reg.acceleration_status = 1)
+                                                     : (status_reg.acceleration_status = 0);
 }
 
 void a_write_control_register(uint8_t control_value) {
-  fprintf(stderr, "writing control reg\n");
+  fprintf(stderr, "writing control reg = %d\n", control_value);
   (control_value & a_slave_gpio_control) ? (control_reg.gpio_control_board = 1) : (control_reg.gpio_control_board = 0);
   (control_value & a_slave_memory_control) ? (control_reg.memory_control = 1) : (control_reg.memory_control = 0);
+  (control_value & a_slave_acceleration_control) ? (control_reg.acceleration_control = 1)
+                                                 : (control_reg.acceleration_control = 0);
   a_control_register_changed_take_action(control_value);
 }
 

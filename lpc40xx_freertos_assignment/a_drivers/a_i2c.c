@@ -1,5 +1,6 @@
 #include "a_i2c.h"
 #include "lpc_peripherals.h"
+
 uint8_t previous_state = 0x00;
 uint8_t register_addre = 0x00;
 
@@ -164,8 +165,8 @@ void __a_i2c_enable(A_I2C_DEVICE *a_i2c_device_run) {
     // Power
     LPC_SC->PCONP |= (1 << 19);
     // PIN
-    LPC_IOCON->P0_0 |= (0b011 << 0); // SDA
-    LPC_IOCON->P0_1 |= (0b011 << 0); // SCL
+    LPC_IOCON->P0_0 = (0b011 << 0); // SDA
+    LPC_IOCON->P0_1 = (0b011 << 0); // SCL
     // LPC_IOCON->P0_19 |= (1<<0b011);      // SDA
     // LPC_IOCON->P0_20 |= (1<<0b011);         // SCL
     // Set Structure
