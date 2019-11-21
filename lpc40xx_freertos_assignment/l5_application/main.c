@@ -35,10 +35,24 @@ int main(void) {
 }
 
 static void a_i2c_slave_task(void *params) {
+  uint8_t is_init = 0;
+  acceleration__axis_data_s data;
   while (1) {
-    if (xSemaphoreTake(a_acclerometer_signal, portMAX_DELAY)) {
+    if (xSemaphoreTake(a_acclerometer_signal, 50)) {
       printf("Accl Init\n");
       acceleration__init();
+      is_init = 1;
     }
+    if (is_init) {
+      data = acceleration__get_data();
+      printf("Data = %x\n", data.x);
+      my_memory[MEMORY_SIZE_MAX - 6] = data.x & 0xff;
+      my_memory[MEMORY_SIZE_MAX - 5] = data.x >> 8;
+      my_memory[MEMORY_SIZE_MAX - 4] = data.y;
+      my_memory[MEMORY_SIZE_MAX - 3] = data.y >> 8;
+      my_memory[MEMORY_SIZE_MAX - 2] = data.z;
+      my_memory[MEMORY_SIZE_MAX - 1] = data.z >> 8;
+    }
+    vTaskDelay(1000);
   }
 }

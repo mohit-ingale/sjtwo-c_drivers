@@ -39,8 +39,8 @@ static status_memory_reg status_reg = {0};
 static control_memory_reg control_reg = {0};
 static gpio_s led0;
 
-#define MEMORY_SIZE_MAX 100
-static uint8_t my_memory[MEMORY_SIZE_MAX] = {0};
+// #define MEMORY_SIZE_MAX 100
+uint8_t my_memory[MEMORY_SIZE_MAX] = {0};
 
 void a_control_register_changed_take_action(uint8_t data);
 uint8_t a_slave_gpio_action(uint8_t data, int is_write);
@@ -84,15 +84,7 @@ uint8_t a_slave_gpio_action(uint8_t data, int is_write) {
 }
 
 uint8_t a_acclerometer_action(uint8_t which_register) {
-  // acceleration__axis_data_s accelerator_data = acceleration__get_data();
-  // my_memory[MEMORY_SIZE_MAX - 6] = (accelerator_data.x & 0xff);
-  // my_memory[MEMORY_SIZE_MAX - 5] = ((accelerator_data.x >> 8) & 0xff);
-  // my_memory[MEMORY_SIZE_MAX - 4] = (accelerator_data.y & 0xff);
-  // my_memory[MEMORY_SIZE_MAX - 3] = ((accelerator_data.y >> 8) & 0xff);
-  // my_memory[MEMORY_SIZE_MAX - 2] = (accelerator_data.z & 0xff);
-  // my_memory[MEMORY_SIZE_MAX - 1] = ((accelerator_data.z >> 8) & 0xff);
-  // return my_memory[which_register];
-  return 1;
+  return my_memory[which_register];
 }
 
 uint8_t a_slave_memory_action(uint8_t memory_address, uint8_t data, uint8_t is_write) {
@@ -125,9 +117,8 @@ uint8_t a_data_received_take_action(uint8_t memory_address, uint8_t data, uint8_
     }
   } else if (memory_address == 0x82 && (a_read_control_register() & a_slave_gpio_control)) {
     return a_slave_gpio_action(data, is_write);
-    // } else if ((memory_address >= MEMORY_SIZE_MAX - 6) && (a_read_control_register() & a_slave_acceleration_control))
-    // {
-    //   return a_acclerometer_action(memory_address);
+  } else if ((memory_address >= MEMORY_SIZE_MAX - 6) && (a_read_control_register() & a_slave_acceleration_control)) {
+    return a_acclerometer_action(memory_address);
   } else if (a_read_control_register() & a_slave_memory_control) {
     return a_slave_memory_action(memory_address, data, is_write);
   } else {

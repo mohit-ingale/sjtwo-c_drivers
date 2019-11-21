@@ -26,5 +26,7 @@ uint8_t a_memory_read(uint8_t memory_address);
 uint8_t a_memory_address_validate(uint8_t memory_address);
 
 xSemaphoreHandle a_acclerometer_signal;
+#define MEMORY_SIZE_MAX 100
+extern uint8_t my_memory[MEMORY_SIZE_MAX];
 
 #endif
